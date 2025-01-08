@@ -1,10 +1,11 @@
 """ChatGLM助手：用于论文标题翻译和分类"""
 from zhipuai import ZhipuAI
-from typing import Tuple
+from typing import Tuple, List
 import time
 import re
 from collections import defaultdict
 import categories_config
+import json
 
 class ChatGLMHelper:
     def __init__(self):
@@ -26,16 +27,14 @@ class ChatGLMHelper:
         max_retries = 3
         retry_delay = 2  # 重试延迟秒数
 
-        prompt = f"""请将以下计算机视觉领域学术论文的标题翻译成中文。
-请注意：
-1. 保持专业术语的准确性
-2. 保留原文中的缩写和专有名词
+        prompt = f"""将以下计算机视觉论文标题翻译成中文：
+{title}
+
+要求：
+1. 保持专业术语准确性
+2. 保留原文缩写和专有名词
 3. 翻译要简洁明了
-4. 只需要返回翻译结果，不要有任何解释或额外内容
-
-论文标题：{title}
-
-中文标题："""
+4. 只返回中文标题"""
 
         for attempt in range(max_retries):
             try:
@@ -43,7 +42,7 @@ class ChatGLMHelper:
                     model="glm-4-flash",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1,
-                    max_tokens=200,
+                    max_tokens=100,
                     top_p=0.7,
                 )
                 translation = response.choices[0].message.content.strip()
@@ -80,98 +79,227 @@ class ChatGLMHelper:
         
         if start != -1 and end != -1:
             text = text[start:end+1]
+        else:
+            return "{}"  # 如果没有找到有效的JSON对象，返回空对象
         
         # 替换单引号为双引号
         text = text.replace("'", '"')
         
+        # 处理中文引号
+        text = text.replace(""", '"').replace(""", '"')
+        
         return text
 
-    def get_category_by_keywords(self, title: str, abstract: str) -> Tuple[str, float]:
-        """通过关键词匹配进行分类
+    def get_category_by_keywords(self, title: str, abstract: str) -> List[Tuple[str, float]]:
+        """通过关键词匹配进行分类（作为辅助判断）
         
         Args:
             title: 论文标题
             abstract: 论文摘要
             
         Returns:
-            Tuple[str, float]: (类别名称, 置信度)
+            List[Tuple[str, float]]: [(类别名称, 置信度), ...] 按置信度排序的类别列表
         """
-        # 将标题和摘要转换为小写
         title_lower = title.lower()
         abstract_lower = abstract.lower()
-        
-        # 记录每个类别的匹配分数
         category_scores = defaultdict(float)
         
-        # 遍历所有类别和关键词
-        for category, keywords in categories_config.CATEGORY_KEYWORDS.items():
+        # 对每个类别进行评分
+        for category, config in categories_config.CATEGORY_KEYWORDS.items():
+            keywords = config["keywords"]
             score = 0.0
-            matched_keywords = set()  # 避免重复计算
             
-            for keyword in keywords:
+            # 计算每个关键词的得分
+            for keyword, weight in keywords:
                 keyword_lower = keyword.lower()
-                if keyword not in matched_keywords:
-                    # 标题完全匹配权重最高
-                    if keyword_lower in title_lower:
-                        score += 5.0
-                        matched_keywords.add(keyword)
-                    # 标题部分匹配权重次之
-                    elif any(kw in title_lower for kw in keyword_lower.split()):
-                        score += 3.0
-                        matched_keywords.add(keyword)
-                    # 摘要开头匹配
-                    elif keyword_lower in abstract_lower[:200]:
-                        score += 2.0
-                        matched_keywords.add(keyword)
-                    # 摘要其他位置匹配
-                    elif keyword_lower in abstract_lower:
-                        score += 1.0
-                        matched_keywords.add(keyword)
+                # 增加标题中关键词的权重
+                if keyword_lower in title_lower:
+                    score += weight * 2.0  # 标题中的关键词权重加倍
+                if keyword_lower in abstract_lower:
+                    score += weight * 0.8
             
             if score > 0:
-                # 根据匹配的关键词数量和位置调整分数
-                if len(matched_keywords) >= 2:
-                    score *= 1.3  # 多个关键词匹配时提升分数
-                elif len(matched_keywords) >= 3:
-                    score *= 1.5  # 更多关键词匹配时进一步提升
-                
-                # 如果标题中包含类别名称，额外加分
-                if category.lower() in title_lower:
-                    score *= 1.2
-                
                 category_scores[category] = score
         
-        # 找出得分最高的类别
-        if category_scores:
-            # 获取前两个得分最高的类别
-            sorted_categories = sorted(category_scores.items(), key=lambda x: x[1], reverse=True)
-            best_category = sorted_categories[0]
-            
-            # 如果最高分显著高于第二高分，增加置信度
-            if len(sorted_categories) > 1:
-                second_best = sorted_categories[1]
-                if best_category[1] >= second_best[1] * 1.5:  # 最高分至少比第二高分高50%
-                    return best_category
-                
-            # 否则使用原始阈值
-            if best_category[1] >= 2.0:
-                return best_category
+        # 按分数排序
+        sorted_categories = sorted(
+            [(cat, score) for cat, score in category_scores.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )
         
-        return "其他", 0.0
+        return sorted_categories if sorted_categories else [("其他", 0.0)]
 
-    def classify_paper(self, title: str, abstract: str) -> str:
-        """对论文进行分类
+    def combine_results(self, keyword_results: List[Tuple[str, float]], 
+                   semantic_results: List[Tuple[str, float]]) -> List[Tuple[str, float]]:
+        """综合关键词匹配和语义分析的结果"""
+        combined_scores = defaultdict(float)
+        
+        # 关键词匹配结果权重0.6
+        for category, score in keyword_results:
+            combined_scores[category] += score * 0.6
+        
+        # 语义分析结果权重0.4
+        for category, score in semantic_results:
+            combined_scores[category] += score * 0.4
+        
+        # 排序并返回结果
+        results = [(cat, score) for cat, score in combined_scores.items()]
+        return sorted(results, key=lambda x: x[1], reverse=True)
+
+    def get_category_by_semantic(self, title: str, abstract: str) -> List[Tuple[str, float]]:
+        """使用语义分析进行分类"""
+        categories_str = "\n".join(f"- {cat}" for cat in categories_config.ALL_CATEGORIES)
+        
+        prompt = f"""分析这篇计算机视觉论文的主要类别。
+
+标题：{title}
+摘要：{abstract}
+
+请分析要点：
+1. 论文的主要技术路线
+2. 论文的应用场景
+3. 论文的核心创新点
+
+从以下类别中选择最匹配的一个：
+{categories_str}
+
+注意：
+- 必须选择一个最匹配的类别
+- 如果跨多个领域，选择最主要的一个
+- 避免选择"其他"类别
+
+请严格按照以下JSON格式回复，不要有任何其他内容：
+{{
+    "category": "所选类别名称",
+    "confidence": 分数
+}}"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="glm-4-flash",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=150,
+                top_p=0.7,
+            )
+            result = response.choices[0].message.content.strip()
+            
+            # 清理和解析JSON
+            try:
+                # 首先尝试直接解析
+                result_json = json.loads(result)
+            except json.JSONDecodeError:
+                # 如果失败，尝试清理后再解析
+                cleaned_result = self.clean_json_string(result)
+                try:
+                    result_json = json.loads(cleaned_result)
+                except json.JSONDecodeError as e:
+                    print(f"JSON解析失败: {str(e)}")
+                    print(f"原始响应: {result}")
+                    return [("其他", 0.0)]
+            
+            category = result_json.get("category", "其他")
+            # 确保confidence是浮点数
+            try:
+                confidence = float(result_json.get("confidence", 0))
+            except (TypeError, ValueError):
+                confidence = 0.0
+            
+            return [(category, confidence)]
+        except Exception as e:
+            print(f"语义分析出错: {str(e)}")
+            return [("其他", 0.0)]
+
+    def confirm_category(self, title: str, abstract: str, initial_category: str) -> Tuple[str, float]:
+        """对分类结果进行二次确认"""
+        prompt = f"""确认论文是否属于"{initial_category}"类别。
+
+标题：{title}
+摘要：{abstract}
+
+分析要点：
+1. 标题中的关键技术词
+2. 论文的主要目标
+3. 是否有更合适的类别
+
+请严格按照以下JSON格式回复，不要有任何其他内容：
+{{
+    "category": "最终类别名称",
+    "confidence": 分数
+}}"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="glm-4-flash",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=100,
+                top_p=0.7,
+            )
+            result = response.choices[0].message.content.strip()
+            
+            # 清理和解析JSON
+            try:
+                # 首先尝试直接解析
+                result_json = json.loads(result)
+            except json.JSONDecodeError:
+                # 如果失败，尝试清理后再解析
+                cleaned_result = self.clean_json_string(result)
+                try:
+                    result_json = json.loads(cleaned_result)
+                except json.JSONDecodeError as e:
+                    print(f"JSON解析失败: {str(e)}")
+                    print(f"原始响应: {result}")
+                    return (initial_category, 1.5)
+            
+            category = result_json.get("category", initial_category)
+            # 确保confidence是浮点数
+            try:
+                confidence = float(result_json.get("confidence", 0))
+            except (TypeError, ValueError):
+                confidence = 1.5
+            
+            return (category, confidence)
+        except Exception as e:
+            print(f"分类确认出错: {str(e)}")
+            return (initial_category, 1.5)
+
+    def classify_paper(self, title: str, abstract: str) -> Tuple[str, float]:
+        """改进的论文分类方法"""
+        # 1. 关键词匹配（第一层）
+        keyword_results = self.get_category_by_keywords(title, abstract)
+        
+        # 如果关键词匹配非常明确，直接返回
+        if keyword_results and keyword_results[0][1] >= 2.5:
+            return keyword_results[0]
+        
+        # 2. 语义分析（第二层）
+        semantic_results = self.get_category_by_semantic(title, abstract)
+        
+        # 3. 综合分析（第三层）
+        combined_scores = self.combine_results(keyword_results, semantic_results)
+        
+        # 4. 二次确认（第四层，针对不确定的情况）
+        best_category, confidence = combined_scores[0]
+        if confidence < 1.8:  # 如果置信度较低
+            return self.confirm_category(title, abstract, best_category)
+        
+        return combined_scores[0]
+
+    def categorize_paper(self, title: str, abstract: str) -> str:
+        """使用ChatGLM对论文进行分类
         
         Args:
             title: 论文标题
             abstract: 论文摘要
-            
+        
         Returns:
             str: 论文类别
         """
         try:
             # 先尝试使用关键词匹配
-            keyword_category, confidence = self.get_category_by_keywords(title, abstract)
+            keyword_category, confidence = self.get_category_by_keywords(title, abstract)[0]
             if keyword_category != "其他" and confidence >= 2.0:
                 return keyword_category
             
@@ -221,53 +349,6 @@ class ChatGLMHelper:
             if keyword_category != "其他":
                 return keyword_category
             return "其他"
-
-    def categorize_paper(self, title: str, abstract: str) -> str:
-        """使用ChatGLM对论文进行分类
-        
-        Args:
-            title: 论文标题
-            abstract: 论文摘要
-        
-        Returns:
-            str: 论文类别
-        """
-        # 构建提示词
-        prompt = f"{categories_config.CATEGORY_PROMPT}\n\n论文标题：{title}\n摘要：{abstract}\n\n注意：请尽量根据论文解决的核心问题确定一个具体类别。只有在完全无法确定时才返回'其他'。"
-        
-        # 尝试最多3次分类
-        max_attempts = 3
-        for attempt in range(max_attempts):
-            try:
-                # 获取ChatGLM的分类结果
-                response = self.client.chat.completions.create(
-                    model="glm-4-flash",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                    max_tokens=200,
-                    top_p=0.7,
-                )
-                category = response.choices[0].message.content.strip()
-                
-                # 验证返回的类别是否有效
-                if category in categories_config.ALL_CATEGORIES:
-                    return category
-                
-                # 如果ChatGLM返回无效类别，尝试使用关键词匹配
-                keyword_category, confidence = self.get_category_by_keywords(title, abstract)
-                if keyword_category != "其他":
-                    return keyword_category
-                
-            except Exception as e:
-                if attempt == max_attempts - 1:
-                    print(f"Error in categorization after {max_attempts} attempts: {e}")
-                    # 最后尝试使用关键词匹配
-                    keyword_category, confidence = self.get_category_by_keywords(title, abstract)
-                    if keyword_category != "其他":
-                        return keyword_category
-                continue
-        
-        return "其他"
 
     def analyze_paper_contribution(self, title: str, abstract: str) -> dict:
         """分析论文的核心贡献和解决的问题

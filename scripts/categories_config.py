@@ -1,446 +1,359 @@
 """
 计算机视觉论文分类配置文件
-按照技术独特性和包含关系最小化的原则排序
 """
 
+# 类别阈值配置
+CATEGORY_THRESHOLDS = {
+    "3D场景": 1.5,      # 降低阈值，因为3D相关论文关键词较少但很明确
+    "生成模型": 1.8,    # 保持较高阈值，因为生成相关词较多
+    "多模态学习": 1.8,  # 保持较高阈值，跨模态任务普遍
+    "检测分割": 1.5,    # 降低阈值，检测分割任务关键词明确
+    "图像理解": 1.8,    # 提高阈值，避免过度匹配
+    "视频理解": 1.5,    # 降低阈值，视频相关论文关键词较少
+    "图像处理": 1.8,    # 保持较高阈值，处理任务普遍
+    "人体分析": 1.5,    # 降低阈值，人体相关任务明确
+    "人脸技术": 1.5,    # 降低阈值，人脸相关任务明确
+    "数字人": 1.8,      # 保持较高阈值，避免误匹配
+    "模型优化": 1.5,    # 降低阈值，优化任务关键词明确
+}
+
+# 类别关键词配置
 CATEGORY_KEYWORDS = {
-    # 渲染类
-    "渲染": [
-        "rendering",
-        "real-time rendering",
-        "point-based rendering",
-        "differentiable rendering",
-        "neural graphics",
-        "graphics pipeline",
-        "ray tracing",
-        "rasterization"
-    ],
-    "NeRF": [
-        "neural radiance field",
-        "nerf",
-        "novel view synthesis",
-        "neural field",
-        "volume rendering",
-        "implicit neural representation",
-        "neural scene representation",
-        "radiance field",
-        "view synthesis",
-        "neural implicit"
-    ],
-    "3D重建": [
-        "3d reconstruction",
-        "mesh reconstruction",
-        "shape reconstruction",
-        "surface reconstruction",
-        "geometry reconstruction",
-        "dense reconstruction",
-        "3d modeling",
-        "shape from x",
-        "structure from motion"
-    ],
-    "3D感知": [
-        "point cloud",
-        "3d detection",
-        "3d segmentation",
-        "slam",
-        "3d tracking",
-        "3d pose",
-        "visual odometry",
-        "lidar",
-        "depth estimation",
-        "rgbd"
-    ],
+    # 3D场景（3D重建、渲染、场景理解）
+    "3D场景": {
+        "keywords": [
+            ("nerf", 1.5),                     # 最具特征性的技术
+            ("3d reconstruction", 1.4),         # 核心任务
+            ("point cloud", 1.4),              # 核心数据类型
+            ("depth estimation", 1.3),         # 相关任务
+            ("novel view", 1.3),               # 相关任务
+            ("3d scene", 1.4),                 # 核心概念
+            ("mesh", 1.2),                     # 相关概念
+            ("rendering", 1.2),                # 相关技术
+            ("slam", 1.3),                     # 相关技术
+            ("3d object", 1.3),                # 相关概念
+            ("3d shape", 1.3),                 # 相关概念
+            ("geometry", 1.2),                 # 相关概念
+            ("volumetric", 1.2),              # 相关概念
+            ("stereo", 1.2),                  # 相关技术
+            ("multi-view", 1.2),              # 相关技术
+            ("surface reconstruction", 1.3),   # 相关任务
+            ("camera pose", 1.2),             # 相关概念
+            ("pointcloud", 1.4),              # 另一种写法
+            ("lidar", 1.3),                   # 相关技术
+        ],
+        "negative_keywords": [
+            "2d",                             # 2D相关
+            "image classification",           # 图像分类任务
+            "detection",                      # 检测任务
+        ]
+    },
     
-    # 生成类（细分不同生成任务）
-    "图像编辑/处理": [
-        "image editing",
-        "image manipulation",
-        "style transfer",
-        "image inpainting",
-        "image outpainting",
-        "image harmonization",
-        "image composition",
-        "image blending",
-        "semantic editing",
-        "local editing"
-    ],
-    "图像生成/合成": [
-        "text to image",
-        "text-to-image",
-        "t2i",
-        "text guided generation",
-        "prompt to image",
-        "dalle",
-        "stable diffusion",
-        "text conditioned",
-        "language guided",
-        "image synthesis",
-        "image generation",
-        "gan",
-        "generative adversarial",
-        "diffusion model",
-        "latent diffusion",
-        "conditional generation",
-        "unconditional generation",
-        "image-to-image"
-    ],
-    "视频生成": [
-        "video generation",
-        "text to video",
-        "image to video",
-        "video synthesis",
-        "motion generation",
-        "animation generation",
-        "video editing",
-        "video prediction",
-        "temporal generation"
-    ],
+    # 生成模型（文生图、图像生成、视频生成）
+    "生成模型": {
+        "keywords": [
+            ("diffusion", 1.5),               # 核心技术
+            ("gan", 1.4),                     # 核心技术
+            ("generative", 1.4),              # 核心概念
+            ("text to image", 1.5),           # 核心任务
+            ("image synthesis", 1.4),         # 核心任务
+            ("text to video", 1.5),           # 核心任务
+            ("video synthesis", 1.4),         # 核心任务
+            ("image generation", 1.4),        # 核心任务
+            ("video generation", 1.4),        # 核心任务
+            ("style transfer", 1.3),          # 相关任务
+            ("editing", 1.2),                 # 相关任务
+            ("inpainting", 1.3),             # 相关任务
+            ("controllable", 1.2),           # 相关特征
+            ("latent", 1.2),                 # 相关概念
+            ("stable diffusion", 1.5),       # 特定技术
+            ("text2image", 1.5),             # 另一种写法
+            ("text2video", 1.5),             # 另一种写法
+            ("img2img", 1.4),                # 特定任务
+            ("synthetic", 1.2),              # 相关概念
+            ("adversarial", 1.3),            # 相关技术
+            ("stylegan", 1.4),               # 特定技术
+            ("vae", 1.3),                    # 相关技术
+        ],
+        "negative_keywords": [
+            "classification",                 # 分类任务
+            "detection",                      # 检测任务
+            "recognition",                    # 识别任务
+        ]
+    },
     
-    # 多模态（细分不同任务类型）
-    "视觉-语言理解": [
-        "vision-language",
-        "visual question answering",
-        "vqa",
-        "visual reasoning",
-        "scene understanding",
-        "visual grounding",
-        "referring expression",
-        "visual dialogue",
-        "cross-modal"
-    ],
-    "图像描述生成": [
-        "image captioning",
-        "dense captioning",
-        "visual captioning",
-        "caption generation",
-        "description generation",
-        "image to text",
-        "visual storytelling"
-    ],
-    "跨模态检索": [
-        "cross-modal retrieval",
-        "image-text retrieval",
-        "visual semantic retrieval",
-        "multimodal retrieval",
-        "clip",
-        "semantic matching",
-        "image text matching"
-    ],
-    
-    # 检测和分割（细分具体任务）
-    "目标检测": [
-        "object detection",
-        "detection transformer",
-        "detector",
-        "yolo",
-        "rcnn",
-        "faster rcnn",
-        "mask rcnn",
-        "one-stage detector",
-        "two-stage detector",
-        "object localization"
-    ],
-    "实例分割": [
-        "instance segmentation",
-        "panoptic segmentation",
-        "instance-level",
-        "mask",
-        "object mask",
-        "instance aware",
-        "mask generation"
-    ],
-    "语义分割": [
-        "semantic segmentation",
-        "segmentation",
-        "pixel-wise segmentation",
-        "dense prediction",
-        "scene segmentation",
-        "scene parsing",
-        "pixel classification"
-    ],
-    
-    # 识别和分类（细分领域）
-    "图像分类": [
-        "image classification",
-        "fine-grained classification",
-        "visual recognition",
-        "classifier",
-        "multi-label",
-        "hierarchical classification",
-        "category recognition"
-    ],
-    "场景理解": [
-        "scene recognition",
-        "scene understanding",
-        "layout estimation",
-        "room layout",
-        "indoor scene",
-        "scene graph",
-        "scene parsing",
-        "visual understanding"
-    ],
-    
-    # 视频理解（按任务细分）
-    "动作识别": [
-        "action recognition",
-        "activity recognition",
-        "motion recognition",
-        "temporal action",
-        "human action",
-        "behavior recognition",
-        "gesture recognition",
-        "action detection"
-    ],
-    "视频追踪": [
-        "object tracking",
-        "multi-object tracking",
-        "visual tracking",
-        "tracking",
-        "trajectory",
-        "motion tracking",
-        "target tracking",
-        "track prediction"
-    ],
-    "视频分析": [
-        "video understanding",
-        "temporal modeling",
-        "video representation",
-        "motion analysis",
-        "optical flow",
-        "spatiotemporal",
-        "temporal dynamics",
-        "temporal relation"
-    ],
-    
-    # 图像增强（细分任务类型）
-    "超分辨率": [
-        "super resolution",
-        "super-resolution",
-        "sr",
-        "upscaling",
-        "image enhancement",
-        "resolution enhancement",
-        "upsampling",
-        "high resolution"
-    ],
-    "图像恢复": [
-        "image restoration",
-        "denoising",
-        "deblurring",
-        "deraining",
-        "dehazing",
-        "enhancement",
-        "artifact removal",
-        "quality improvement"
-    ],
-    "低光照增强": [
-        "low-light",
-        "low light",
-        "night",
-        "dark",
-        "illumination",
-        "lighting enhancement",
-        "night vision",
-        "illumination adjustment"
-    ],
-    
-    # 人脸/人体分析（细分任务）
-    "人脸识别/处理": [
-        "face recognition",
-        "facial recognition",
-        "face detection",
-        "face alignment",
-        "face parsing",
-        "facial attribute",
-        "face verification",
-        "facial analysis"
-    ],
-    "人体姿态估计": [
-        "pose estimation",
-        "human pose",
-        "body pose",
-        "skeleton",
-        "keypoint",
-        "joint detection",
-        "motion capture",
-        "3d pose"
-    ],
-    "人体解析": [
-        "human parsing",
-        "person segmentation",
-        "body parsing",
-        "human segmentation",
-        "person re-identification",
-        "reid",
-        "human part",
-        "clothing parsing"
-    ],
-    
-    # 数字人/虚拟人（细分应用）
-    "人脸动画": [
-        "face animation",
-        "facial animation",
-        "talking head",
-        "lip sync",
-        "expression synthesis",
-        "face reenactment",
-        "facial expression"
-    ],
-    "虚拟人生成": [
-        "digital human",
-        "virtual human",
-        "avatar",
-        "character animation",
-        "motion retargeting",
-        "metahuman",
-        "virtual character",
-        "digital avatar"
-    ],
-    
-    # 基础技术（细分方法论）
-    "自监督学习": [
-        "self-supervised",
-        "contrastive learning",
-        "pretext task",
-        "representation learning",
-        "unsupervised learning",
-        "pretraining",
-        "self training"
-    ],
-    "少样本学习": [
-        "few-shot",
-        "zero-shot",
-        "meta-learning",
-        "transfer learning",
-        "domain adaptation",
-        "cross domain",
-        "one shot",
-        "low shot"
-    ],
-    
-    # 模型优化（细分技术方向）
-    "模型压缩": [
-        "model compression",
-        "pruning",
-        "quantization",
-        "knowledge distillation",
-        "lightweight",
-        "model optimization",
-        "parameter reduction",
-        "compact model"
-    ],
-    "模型加速": [
-        "acceleration",
-        "efficient inference",
-        "real-time",
-        "mobile",
-        "edge computing",
-        "neural architecture search",
-        "speed up",
-        "fast inference"
-    ]
+    # 多模态学习（视觉-语言理解、跨模态学习）
+    "多模态学习": {
+        "keywords": [
+            ("visual language", 1.5),         # 核心概念
+            ("vision language", 1.5),         # 核心概念
+            ("multimodal", 1.4),             # 关键特征词
+            ("cross modal", 1.4),            # 关键特征词
+            ("text vision", 1.4),            # 核心概念
+            ("visual question", 1.4),        # 典型任务
+            ("image text", 1.4),             # 核心概念
+            ("vision text", 1.4),            # 核心概念
+            ("visual grounding", 1.3),       # 相关任务
+            ("referring", 1.3),              # 相关任务
+            ("caption", 1.3),                # 相关任务
+            ("alignment", 1.2),              # 相关概念
+            ("instruction", 1.2),            # 相关概念
+            ("prompt", 1.2),                 # 相关概念
+            ("vqa", 1.4),                    # 特定任务缩写
+            ("visual reasoning", 1.3),       # 相关任务
+            ("cross attention", 1.3),        # 相关技术
+            ("vision-language", 1.5),        # 另一种写法
+            ("text-vision", 1.4),            # 另一种写法
+            ("image-text", 1.4),             # 另一种写法
+        ],
+        "negative_keywords": [
+            "single modal",                  # 单模态
+            "unimodal",                      # 单模态
+        ]
+    },
+
+    # 检测分割（目标检测、实例分割、语义分割）
+    "检测分割": {
+        "keywords": [
+            ("object detection", 1.4),        # 核心任务
+            ("instance segmentation", 1.4),   # 核心任务
+            ("semantic segmentation", 1.4),   # 核心任务
+            ("detection", 1.3),              # 核心概念
+            ("segmentation", 1.3),           # 核心概念
+            ("detector", 1.3),               # 相关概念
+            ("bbox", 1.3),                   # 相关概念
+            ("boundary", 1.2),               # 相关概念
+            ("mask", 1.2),                   # 相关概念
+            ("anchor", 1.2),                 # 相关概念
+            ("proposal", 1.2),               # 相关概念
+            ("localization", 1.2),           # 相关概念
+            ("region", 1.2),                 # 相关概念
+            ("segment", 1.2),                # 相关概念
+            ("yolo", 1.4),                   # 特定技术
+            ("rcnn", 1.4),                   # 特定技术
+            ("faster rcnn", 1.4),            # 特定技术
+            ("mask rcnn", 1.4),              # 特定技术
+            ("object localization", 1.3),    # 相关任务
+            ("panoptic", 1.4),              # 全景分割
+        ],
+        "negative_keywords": [
+            "generation",                    # 生成任务
+            "synthesis",                     # 合成任务
+            "style",                         # 风格相关
+        ]
+    },
+
+    # 图像理解（分类、场景理解、细粒度识别）
+    "图像理解": {
+        "keywords": [
+            ("image classification", 1.4),    # 核心任务
+            ("scene understanding", 1.4),     # 核心任务
+            ("fine grained", 1.4),           # 核心任务
+            ("recognition", 1.3),            # 核心概念
+            ("classifier", 1.3),             # 相关概念
+            ("category", 1.2),               # 相关概念
+            ("attribute", 1.2),              # 相关概念
+            ("scene parsing", 1.3),          # 相关任务
+            ("scene graph", 1.3),            # 相关概念
+            ("visual reasoning", 1.3),       # 相关任务
+            ("knowledge", 1.2),              # 相关概念
+            ("concept", 1.2),                # 相关概念
+            ("semantic", 1.2),               # 相关概念
+            ("hierarchy", 1.2),              # 相关概念
+            ("image retrieval", 1.3),        # 相关任务
+            ("image annotation", 1.3),       # 相关任务
+            ("image tagging", 1.3),          # 相关任务
+            ("image captioning", 1.3),       # 相关任务
+        ],
+        "negative_keywords": [
+            "detection",                      # 检测任务
+            "segmentation",                   # 分割任务
+            "tracking",                       # 跟踪任务
+        ]
+    },
+
+    # 视频理解（动作识别、目标追踪、时序分析）
+    "视频理解": {
+        "keywords": [
+            ("action recognition", 1.4),      # 核心任务
+            ("video tracking", 1.4),          # 核心任务
+            ("temporal", 1.3),                # 核心概念
+            ("motion", 1.3),                  # 核心概念
+            ("tracking", 1.3),                # 核心概念
+            ("trajectory", 1.2),              # 相关概念
+            ("dynamic", 1.2),                 # 相关概念
+            ("sequence", 1.2),                # 相关概念
+            ("action detection", 1.3),        # 相关任务
+            ("video analysis", 1.3),          # 相关任务
+            ("activity", 1.2),                # 相关概念
+            ("event", 1.2),                   # 相关概念
+            ("frame", 1.2),                   # 相关概念
+            ("optical flow", 1.3),            # 相关技术
+            ("motion estimation", 1.3),       # 相关任务
+            ("object detection", 1.3),        # 相关任务
+            ("scene understanding", 1.3),     # 相关任务
+        ],
+        "negative_keywords": [
+            "image",                          # 图像相关
+            "static",                         # 静态相关
+            "2d",                             # 2D相关
+        ]
+    },
+
+    # 图像处理（图像增强、修复、编辑）
+    "图像处理": {
+        "keywords": [
+            ("image enhancement", 1.4),       # 核心任务
+            ("image restoration", 1.4),       # 核心任务
+            ("super resolution", 1.4),        # 核心任务
+            ("denoising", 1.3),              # 相关任务
+            ("deblurring", 1.3),             # 相关任务
+            ("enhancement", 1.3),             # 相关概念
+            ("restoration", 1.3),             # 相关概念
+            ("quality", 1.2),                 # 相关概念
+            ("artifact", 1.2),                # 相关概念
+            ("degradation", 1.2),             # 相关概念
+            ("compression", 1.2),             # 相关任务
+            ("style transfer", 1.3),          # 相关任务
+            ("harmonization", 1.2),           # 相关任务
+            ("retouching", 1.2),              # 相关任务
+            ("inpainting", 1.3),             # 相关任务
+            ("image editing", 1.3),           # 相关任务
+            ("image manipulation", 1.3),      # 相关任务
+        ],
+        "negative_keywords": [
+            "detection",                      # 检测任务
+            "segmentation",                   # 分割任务
+            "recognition",                    # 识别任务
+        ]
+    },
+
+    # 人体分析（姿态估计、动作分析、重识别）
+    "人体分析": {
+        "keywords": [
+            ("pose estimation", 1.4),         # 核心任务
+            ("human pose", 1.4),              # 核心任务
+            ("action analysis", 1.4),         # 核心任务
+            ("person re", 1.4),               # 核心任务
+            ("human motion", 1.3),            # 相关任务
+            ("skeleton", 1.3),                # 相关概念
+            ("body", 1.2),                    # 相关概念
+            ("gesture", 1.2),                 # 相关概念
+            ("pedestrian", 1.2),              # 相关概念
+            ("gait", 1.2),                    # 相关概念
+            ("human parsing", 1.3),           # 相关任务
+            ("human mesh", 1.3),              # 相关任务
+            ("human shape", 1.3),             # 相关任务
+            ("human reconstruction", 1.3),     # 相关任务
+            ("facial analysis", 1.3),         # 相关任务
+            ("hand pose", 1.3),               # 相关任务
+        ],
+        "negative_keywords": [
+            "object",                         # 物体相关
+            "scene",                          # 场景相关
+            "image",                          # 图像相关
+        ]
+    },
+
+    # 人脸技术（人脸识别、生成、动画）
+    "人脸技术": {
+        "keywords": [
+            ("face recognition", 1.4),        # 核心任务
+            ("facial recognition", 1.4),      # 核心任务
+            ("face generation", 1.4),         # 核心任务
+            ("face animation", 1.4),          # 核心任务
+            ("face editing", 1.3),            # 相关任务
+            ("face synthesis", 1.3),          # 相关任务
+            ("facial expression", 1.3),       # 相关概念
+            ("face reconstruction", 1.3),     # 相关任务
+            ("face detection", 1.3),          # 相关任务
+            ("face tracking", 1.3),           # 相关任务
+            ("face alignment", 1.3),          # 相关任务
+            ("face verification", 1.3),       # 相关任务
+            ("face attribute", 1.2),          # 相关概念
+            ("face landmark", 1.2),           # 相关概念
+            ("facial landmark", 1.3),         # 相关概念
+            ("facial feature", 1.3),          # 相关概念
+        ],
+        "negative_keywords": [
+            "body",                           # 身体相关
+            "gesture",                        # 手势相关
+            "action",                         # 动作相关
+        ]
+    },
+
+    # 数字人（数字人、虚拟人、数字孪生）
+    "数字人": {
+        "keywords": [
+            ("digital human", 1.4),           # 核心概念
+            ("virtual human", 1.4),           # 核心概念
+            ("digital avatar", 1.4),          # 核心概念
+            ("talking head", 1.4),            # 核心任务
+            ("digital twin", 1.3),            # 相关概念
+            ("virtual character", 1.3),       # 相关概念
+            ("avatar", 1.2),                  # 相关概念
+            ("character animation", 1.3),     # 相关任务
+            ("human synthesis", 1.3),         # 相关任务
+            ("human generation", 1.3),        # 相关任务
+            ("human animation", 1.3),         # 相关任务
+            ("facial animation", 1.3),        # 相关任务
+            ("motion synthesis", 1.2),        # 相关任务
+            ("performance capture", 1.2),     # 相关任务
+            ("motion capture", 1.3),          # 相关任务
+            ("character modeling", 1.3),      # 相关任务
+        ],
+        "negative_keywords": [
+            "real",                           # 真实相关
+            "physical",                       # 物理相关
+            "robot",                          # 机器人相关
+        ]
+    },
+
+    # 模型优化（模型压缩、加速、轻量化）
+    "模型优化": {
+        "keywords": [
+            ("model compression", 1.4),        # 核心任务
+            ("model acceleration", 1.4),       # 核心任务
+            ("network pruning", 1.4),          # 核心任务
+            ("quantization", 1.3),             # 相关技术
+            ("distillation", 1.3),             # 相关技术
+            ("lightweight", 1.3),              # 相关概念
+            ("efficient", 1.2),                # 相关概念
+            ("acceleration", 1.2),             # 相关概念
+            ("compression", 1.2),              # 相关概念
+            ("optimization", 1.2),             # 相关概念
+            ("pruning", 1.2),                  # 相关概念
+            ("sparse", 1.2),                   # 相关概念
+            ("deployment", 1.2),               # 相关概念
+            ("inference", 1.2),                # 相关概念
+            ("knowledge distillation", 1.3),   # 相关技术
+            ("model simplification", 1.3),     # 相关任务
+            ("model reduction", 1.3),          # 相关任务
+        ],
+        "negative_keywords": [
+            "training",                       # 训练相关
+            "learning",                       # 学习相关
+            "inference",                      # 推理相关
+        ]
+    },
 }
 
-# 定义类别的层次结构
-CATEGORY_HIERARCHY = {
-    "渲染类": ["渲染", "NeRF"],
-    "3D类": ["3D重建", "3D感知"],
-    "生成类": ["图像编辑/处理", "图像生成/合成", "视频生成"],
-    "多模态类": ["视觉-语言理解", "图像描述生成", "跨模态检索"],
-    "检测分割类": ["目标检测", "实例分割", "语义分割"],
-    "识别分类类": ["图像分类", "场景理解"],
-    "视频类": ["动作识别", "视频追踪", "视频分析"],
-    "图像增强类": ["超分辨", "图像恢复"],
-    "人脸人体类": ["人脸识别/处理", "人体姿态估计", "人体解析"],
-    "虚拟人类": ["人脸动画", "虚拟人生成"],
-    "基础技术类": ["自监督学习", "少样本学习"],
-    "模型优化类": ["模型压缩", "模型加速"]
-}
+# 所有类别列表（不包括"其他"）
+ALL_CATEGORIES = list(CATEGORY_THRESHOLDS.keys()) + ["其他"]
 
-# Define ALL_CATEGORIES
-ALL_CATEGORIES = [category for categories in CATEGORY_HIERARCHY.values() for category in categories]
+# 分类提示词
+CATEGORY_PROMPT = f"""请从以下预定义类别中，选择最合适的1-2个类别：
+{', '.join(ALL_CATEGORIES[:-1])}
 
-CATEGORY_PROMPT = '''
-你是一个专业的计算机视觉论文分类专家。请仔细分析论文的标题和摘要，将论文准确分类到一个最合适的类别。你的目标是尽可能避免使用"其他"类别。
-
-分类原则：
-1. 优先考虑论文的主要技术贡献和创新点
-2. 如果论文涉及多个领域，选择其最主要的技术贡献方向
-3. 避免过度倾向于某个热门类别
-4. 仔细区分相似类别的细微差别
-5. 只返回一个最合适的类别，不要返回多个类别
-6. 返回具体的子类别，不要返回大类
-7. 即使论文的方法不是某个类别的主流方法，只要解决的是该类别的问题，也应该归类到该类别下
-8. 对于跨领域的工作，根据其主要应用场景和技术贡献选择类别
-9. 即使论文使用了创新或非传统的方法，也要基于其解决的核心问题来分类
-10. 除非论文完全无法归类（概率极低），否则必须选择一个最接近的类别
-
-重要提示：
-- 在计算机视觉领域，几乎每篇论文都能归类到某个具体类别
-- "其他"类别的使用概率应该低于1%
-- 如果难以确定类别，考虑论文的最终目标和应用场景
-- 宁可选择一个相对接近的类别，也不要轻易返回"其他"
-
-论文分类体系（按技术领域划分）：
-
-1. 渲染类（处理渲染和场景）
-   - 渲染：实时渲染、点云渲染、神经渲染等
-   - NeRF：神经辐射场、视图合成、隐式表示、新视角合成等
-
-2. 3D类（处理3D数据和场景）
-   - 3D重建：3D形状重建、网格重建、表面重建、体素重建等
-   - 3D感知：点云处理、深度估计、SLAM、位姿估计、3D检测等
-
-3. 生成类（创作和编辑视觉内容）
-   - 图像编辑/处理：图像编辑、风格迁移、图像修复、内容操作等
-   - 图像生成/合成：GAN生成、扩散模型、图像合成、图像变换等
-   - 视频生成：视频生成、动画生成、视频编辑、视频合成等
-
-4. 多模态类（跨模态理解和生成）
-   - 视觉-语言理解：视觉问答、视觉推理、场景理解、多模态对话等
-   - 图像描述生成：图像描述、密集描述、视觉描述、场景文本等
-   - 跨模态检索：图文检索、跨模态匹配、多模态检索、语义检索等
-
-5. 检测分割类（物体定位和像素级理解）
-   - 目标检测：物体检测、目标定位、检测器设计、目标识别等
-   - 实例分割：实例级分割、全景分割、对象分割、实例识别等
-   - 语义分割：语义分割、场景解析、密集预测、像素分类等
-
-6. 识别分类类（图像级别的理解）
-   - 图像分类：图像识别、细粒度分类、分类器设计、特征提取等
-   - 场景理解：场景识别、布局分析、环境理解、上下文理解等
-
-7. 视频类（时序数据分析）
-   - 动作识别：行为识别、动作分析、活动理解、时序理解等
-   - 视频追踪：目标跟踪、多目标跟踪、轨迹预测、运动预测等
-   - 视频分析：时序建模、运动分析、光流估计、视频理解等
-
-8. 图像增强类（提升图像质量）
-   - 超分辨率：图像超分、分辨率提升、图像重建、细节增强等
-   - 图像恢复：去噪、去模糊、图像修复、图像增强、质量提升等
-   - 低光照增强：暗光增强、夜景处理、照明调整、光照补偿等
-
-9. 人脸人体类（人物相关分析）
-   - 人脸识别/处理：人脸识别、表情分析、属性识别、身份验证等
-   - 人体姿态估计：姿态检测、关键点检测、动作分析、姿态跟踪等
-   - 人体解析：人体分割、服饰分析、重识别、人体属性等
-
-10. 虚拟人类（虚拟人相关应用）
-    - 人脸动画：表情动画、说话头像、唇形同步、表情编辑等
-    - 虚拟人生成：数字人物、虚拟形象、动作重定向、人物动画等
-
-11. 基础技术类（通用方法和优化）
-    - 自监督学习：无监督学习、对比学习、预训练、表示学习等
-    - 少样本学习：小样本学习、零样本学习、迁移学习、域适应等
-
-12. 模型优化类（模型优化和加速）
-    - 模型压缩：剪枝、量化、知识蒸馏、轻量化、模型优化等
-    - 模型加速：推理优化、边缘部署、实时处理、硬件加速等
-
-请分析论文的标题和摘要，给出一个最合适的具体类别。选择类别时：
-1. 必须是具体的子类别，不能是大类
-2. 即使论文使用了不常见的方法，也要根据其解决的问题选择类别
-3. 只有在完全无法归类时才返回"其他"（概率<1%）
-4. 只需返回类别名称，不需要解释
-
-'''
+每个类别的主要研究方向：
+1. 3D场景：3D重建、新视角合成、点云处理、深度估计等
+2. 生成模型：扩散模型、GAN、文生图、视频生成等
+3. 多模态学习：视觉-语言理解、跨模态对齐、多模态融合等
+4. 检测分割：目标检测、实例分割、语义分割等
+5. 图像理解：图像分类、场景理解、细粒度识别等
+6. 视频理解：动作识别、目标追踪、时序分析等
+7. 图像处理：图像增强、超分辨率、图像修复等
+8. 人体分析：姿态估计、动作分析、人体重识别等
+9. 人脸技术：人脸识别、生成、动画等
+10. 数字人：数字人生成、数字孪生、虚拟人等
+11. 模型优化：模型压缩、加速、轻量化等"""
