@@ -262,42 +262,66 @@ class ChatGLMHelper:
 
     def combine_results(self, keyword_results: List[Tuple[str, float]], 
                        semantic_results: List[Tuple[str, float]]) -> List[Tuple[str, float]]:
-        """综合关键词匹配和语义分析的结果"""
+        """
+        Synthesize classification results from keyword matching and semantic analysis.
+        
+        Implementation Details:
+            1. Scoring Integration:
+               - Keyword matching: 30% weight (precision-oriented)
+               - Semantic analysis: 70% weight (context-oriented)
+            
+            2. Confidence Thresholds:
+               - Minimum confidence: 0.3
+               - Priority category threshold: 60% of max confidence
+               - General category threshold: 40% of max confidence
+            
+            3. Priority Processing:
+               - Hierarchical evaluation of high-priority categories
+               - Early return for high-confidence priority matches
+               - Fallback to general category evaluation
+        
+        Args:
+            keyword_results: List of (category, confidence) pairs from lexical analysis
+            semantic_results: List of (category, confidence) pairs from semantic analysis
+        
+        Returns:
+            List[Tuple[str, float]]: Synthesized classification results,
+                                    sorted by confidence in descending order
+        """
         if not keyword_results and not semantic_results:
             return []
 
-        # 初始化组合分数字典
+        # Initialize combined confidence scores
         combined_scores = defaultdict(float)
         
-        # 添加关键词匹配结果（降低权重到0.3）
+        # Integrate keyword matching results (precision-oriented)
         for category, score in keyword_results:
             combined_scores[category] += score * 0.3
         
-        # 添加语义分析结果（提高权重到0.7）
+        # Integrate semantic analysis results (context-oriented)
         for category, score in semantic_results:
             combined_scores[category] += score * 0.7
         
-        # 获取最高分
+        # Validate against minimum confidence threshold
         max_score = max(combined_scores.values()) if combined_scores else 0
-        
-        # 如果最高分过低，返回空结果
         if max_score < 0.3:
             return []
         
-        # 处理高优先级类别
+        # Process high-priority categories
         high_priority_categories = ["扩散桥", "具身智能", "流模型"]
         for category in high_priority_categories:
             if category in combined_scores:
                 score = combined_scores[category]
-                # 如果高优先级类别的分数达到最高分的60%，直接返回
+                # Early return for high-confidence priority matches
                 if score >= max_score * 0.6:
                     return [(category, score)]
         
-        # 返回所有显著的类别（分数至少为最高分的40%）
-        significant_results = []
-        for category, score in combined_scores.items():
-            if score >= max_score * 0.4:
-                significant_results.append((category, score))
+        # Process general categories
+        significant_results = [
+            (category, score)
+            for category, score in combined_scores.items()
+            if score >= max_score * 0.4  # Significance threshold
+        ]
         
         return sorted(significant_results, key=lambda x: x[1], reverse=True)
 

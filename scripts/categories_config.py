@@ -2,26 +2,62 @@
 计算机视觉论文分类配置文件
 """
 
-# 类别阈值配置
+# 类别阈值配置（越大越严格）
 CATEGORY_THRESHOLDS = {
-    "3D场景": 1.1,      # 降低阈值，更容易匹配
-    "神经渲染": 1.1,    # 降低阈值，更容易匹配
-    "3DGS": 1.1,       # 降低阈值，更容易匹配
-    "生成模型": 1.1,    # 降低阈值，更容易匹配
-    "多模态": 1.1,      # 降低阈值，更容易匹配
-    "检测分割": 1.0,    # 保持较低阈值
-    "图像理解": 1.0,    # 保持较低阈值
-    "视频理解": 1.0,    # 保持较低阈值
-    "图像处理": 1.0,    # 保持较低阈值
-    "人体分析": 1.2,    # 稍微降低阈值
-    "人脸技术": 1.2,    # 稍微降低阈值
-    "数字人": 1.2,      # 稍微降低阈值
-    "模型优化": 1.0,    # 降低阈值，更容易匹配
-    "具身智能": 1.0,    # 降低阈值，更容易匹配
-    "扩散桥": 1.0,      # 降低阈值，更容易匹配
-    "流模型": 1.0,      # 降低阈值，更容易匹配
+    "3D场景": 1.2,      # 3D重建等传统任务，阈值适中
+    "神经渲染": 1.2,    # NeRF相关任务，阈值适中
+    "3DGS": 1.2,       # 3D Gaussian Splatting，阈值适中
+    "生成模型": 1.2,    # 扩散模型、GAN等
+    "多模态": 1.2,      # 跨模态学习和对齐
+    "检测分割": 1.2,    # 目标检测和分割任务
+    "图像理解": 1.2,    # 图像分类和场景理解
+    "视频理解": 1.2,    # 视频分析和动作识别
+    "图像处理": 1.2,    # 图像增强和修复
+    "人体分析": 1.2,    # 人体姿态估计和动作分析
+    "人脸技术": 1.2,    # 人脸识别和表情分析
+    "数字人": 1.2,      # 数字人生成和驱动
+    "模型优化": 1.2,    # 模型压缩和加速
+    "具身智能": 1.2,    # 机器人和环境交互
+    "扩散桥": 1.2,      # 扩散过程和SDE
+    "流模型": 1.2,      # 可逆神经网络和概率流
+    "医学应用": 1.2,    # 医学图像分析，阈值降低以便更容易匹配
     "其他": 1.8,       # 提高阈值，更难匹配
 }
+
+# 类别显示顺序配置（从上到下）
+CATEGORY_DISPLAY_ORDER = [
+    # 基础视觉理解
+    "图像理解",     # 图像分类和场景理解
+    "检测分割",     # 目标检测和分割任务
+    "视频理解",     # 视频分析和动作识别
+    
+    # 生成和编辑
+    "生成模型",     # 扩散模型、GAN等
+    "扩散桥",       # 扩散过程和SDE
+    "流模型",       # 可逆神经网络和概率流
+    "图像处理",     # 图像增强和修复
+    
+    # 3D相关技术
+    "3D场景",       # 3D重建等传统任务
+    "神经渲染",     # NeRF相关任务
+    "3DGS",        # 3D Gaussian Splatting
+    
+    # 人机交互
+    "多模态",       # 跨模态学习和对齐
+    "具身智能",     # 机器人和环境交互
+    
+    # 人体和人脸
+    "人体分析",     # 人体姿态估计和动作分析
+    "人脸技术",     # 人脸识别和表情分析
+    "数字人",       # 数字人生成和驱动
+    
+    # 学习方法和优化
+    "模型优化",     # 模型压缩和加速
+    
+    # 特殊类别（放在最后）
+    "医学应用",     # 医学图像分析（优先级高但显示在后）
+    "其他"          # 其他类别永远放在最后
+]
 
 # 类别关键词配置
 CATEGORY_KEYWORDS = {
@@ -1108,7 +1144,7 @@ CATEGORY_KEYWORDS = {
             ("score function", 2.0),               # 分数函数
             ("stochastic differential equation", 2.0), # 随机微分方程
             ("sde", 2.0),                          # SDE
-            ("langevin dynamics", 2.0),            # 朗之万动力学
+            ("langevin dynamics", 2.0),           # 朗之万动力学
             
             # 理论基础（高权重）
             ("probability flow ode", 1.8),          # 概率流常微分方程
@@ -1223,6 +1259,77 @@ CATEGORY_KEYWORDS = {
             "backbone network"
         ]
     },
+
+    # 医学应用（医学图像分析和诊断）
+    "医学应用": {
+        "priority": 4,  # Highest priority to ensure medical papers are classified here first
+        "keywords": [
+            # 医学图像分析核心（高权重）
+            ("medical", 2.5),                      # Any medical context
+            ("clinical", 2.5),                     # Any clinical context
+            ("healthcare", 2.5),                   # Healthcare context
+            ("diagnosis", 2.5),                    # Diagnostic context
+            ("patient", 2.5),                      # Patient context
+            
+            # 医学图像分析（高权重）
+            ("medical imaging", 2.2),              # 医学图像分析
+            ("medical image", 2.2),                # 医学图像
+            ("radiograph", 2.2),                   # X光片
+            ("ct scan", 2.2),                      # CT扫描
+            ("mri", 2.2),                          # MRI
+            ("ultrasound", 2.2),                   # 超声波
+            ("x ray", 2.2),                        # X光
+            ("pathology", 2.2),                    # 病理学
+            ("mammography", 2.2),                  # 乳腺摄影
+            
+            # 临床应用（中等权重）
+            ("diagnosis", 2.0),                    # 诊断
+            ("clinical", 2.0),                     # 临床
+            ("lesion", 2.0),                       # 病变
+            ("tumor", 2.0),                        # 肿瘤
+            ("cancer", 2.0),                       # 癌症
+            ("disease", 2.0),                      # 疾病
+            ("screening", 2.0),                    # 筛查
+            ("anatomical", 2.0),                   # 解剖学
+            
+            # 医学分析（中等权重）
+            ("segmentation medical", 1.8),         # 医学图像分割
+            ("detection medical", 1.8),            # 医学图像检测
+            ("classification medical", 1.8),       # 医学图像分类
+            ("registration medical", 1.8),         # 医学图像配准
+            ("reconstruction medical", 1.8),       # 医学图像重建
+            ("enhancement medical", 1.8),          # 医学图像增强
+            
+            # 医疗技术（较低权重）
+            ("healthcare", 1.5),                   # 医疗保健
+            ("hospital", 1.5),                     # 医院
+            ("radiology", 1.5),                    # 放射学
+            ("diagnostic", 1.5),                   # 诊断学
+            ("surgical", 1.5),                     # 手术
+            ("patient", 1.5),                      # 患者
+            
+            # 医学分析（较低权重）
+            ("biomedical", 1.2),                   # 生物医学
+            ("medical analysis", 1.2),             # 医学分析
+            ("medical research", 1.2),             # 医学研究
+            ("medical science", 1.2),              # 医学科学
+            ("medical technology", 1.2),           # 医学技术
+        ],
+        "negative_keywords": [
+            # Only exclude very specific non-medical terms
+            "natural image",
+            "face recognition",
+            "autonomous driving",
+            "scene understanding",
+            "object tracking",
+            "text to image",
+            "style transfer",
+            "image generation",
+            "robot",
+            "manipulation",
+            "navigation"
+        ]
+    }
 }
 
 # 所有类别列表（不包括"其他"）
@@ -1248,4 +1355,7 @@ CATEGORY_PROMPT = f"""请从以下预定义类别中，选择最合适的1-2个�
 13. 模型优化：模型压缩、加速、量化等
 14. 具身智能：机器人、交互、环境等
 15. 扩散桥：扩散过程、随机微分方程等
-16. 流模型：可逆神经网络、概率流等"""
+16. 流模型：可逆神经网络、概率流等
+17. 医学应用：医学图像分析和诊断
+18. 学习方法：各种学习范式
+"""

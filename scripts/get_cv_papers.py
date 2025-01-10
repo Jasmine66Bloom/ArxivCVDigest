@@ -5,7 +5,7 @@ import io
 import os
 import re
 import time
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 import math
 
 import arxiv
@@ -13,9 +13,10 @@ import requests
 from tqdm import tqdm
 
 from chatglm_helper import ChatGLMHelper
+from categories_config import CATEGORY_DISPLAY_ORDER  # 导入类别显示顺序
 
 # 查询参数设置
-QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2=前天
+QUERY_DAYS_AGO = 2          # 查询几天前的论文，0=今天，1=昨天，2=前天
 MAX_RESULTS = 200           # 最大返回论文数量
 MAX_WORKERS = 8            # 并行处理的最大线程数
 
@@ -96,8 +97,11 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
     # 表格列标题
     headers = ['状态', '英文标题', '中文标题', '作者', 'PDF链接', '代码链接']
 
-    # 为每个有论文的类别创建表格
-    for category, papers in sorted(((k, v) for k, v in active_categories.items() if k != "其他")):
+    # 按照CATEGORY_DISPLAY_ORDER的顺序处理类别
+    for category in CATEGORY_DISPLAY_ORDER:
+        if category not in active_categories:
+            continue
+
         # 添加类别标题
         markdown += f"\n## {category}\n\n"
 
@@ -106,44 +110,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
         markdown += "|" + "|".join(["---"] * len(headers)) + "|\n"
 
         # 添加论文
-        for paper in papers:
-            # 确定论文状态
-            if paper['is_updated']:
-                status = f"📝 更新"
-            else:
-                status = f"🆕 发布"
-
-            # 准备每个字段的值
-            values = [
-                status,
-                paper['title'],
-                paper['title_cn'],
-                paper['authors'],  # 已经是格式化好的字符串
-                f"<{paper['pdf_url']}>",
-                f"<{paper['github_link']}>" if paper['github_link'] != 'None' else 'None',
-            ]
-
-            # 处理特殊字符
-            values = [str(v).replace('\n', ' ').replace('|', '&#124;')
-                      for v in values]
-
-            # 添加到表格
-            markdown += "|" + "|".join(values) + "|\n"
-
-        # 在每个表格后添加空行
-        markdown += "\n"
-
-    # 处理"其他"类别
-    if "其他" in active_categories:
-        # 添加类别标题
-        markdown += f"\n## 其他\n\n"
-
-        # 创建表格头
-        markdown += "|" + "|".join(headers) + "|\n"
-        markdown += "|" + "|".join(["---"] * len(headers)) + "|\n"
-
-        # 添加论文
-        for paper in active_categories["其他"]:
+        for paper in active_categories[category]:
             # 确定论文状态
             if paper['is_updated']:
                 status = f"📝 更新"
@@ -183,42 +150,16 @@ def df_to_markdown_detailed(papers_by_category: dict, target_date) -> str:
     if not active_categories:
         return "今天没有相关论文。"
 
-    # 为每个有论文的类别创建详细内容
-    for category, papers in sorted(((k, v) for k, v in active_categories.items() if k != "其他")):
+    # 按照CATEGORY_DISPLAY_ORDER的顺序处理类别
+    for category in CATEGORY_DISPLAY_ORDER:
+        if category not in active_categories:
+            continue
+
         # 添加类别标题
-        markdown += f"## **{category}**\n"
-        markdown += "\n"
+        markdown += f"\n## {category}\n\n"
 
         # 添加论文
-        for idx, paper in enumerate(papers, 1):
-            markdown += f'**index:** {idx}<br />\n'
-            markdown += f'**Date:** {target_date.strftime("%Y-%m-%d")}<br />\n'
-            markdown += f'**Title:** {paper["title"]}<br />\n'
-            markdown += f'**Title_cn:** {paper["title_cn"]}<br />\n'
-            # 已经是格式化好的字符串
-            markdown += f'**Authors:** {paper["authors"]}<br />\n'
-            markdown += f'**PDF:** <{paper["pdf_url"]}><br />\n'
-
-            if paper["github_link"] != 'None':
-                markdown += f'**Code:** <{paper["github_link"]}><br />\n'
-            else:
-                markdown += '**Code:** None<br />\n'
-
-            if "核心贡献" in paper:
-                markdown += f'**Core Contribution:** {paper["核心贡献"]}<br />\n'
-            if "核心问题" in paper:
-                markdown += f'**Core Problem:** {paper["核心问题"]}<br />\n'
-
-            markdown += "\n"
-
-        markdown += "\n"
-
-    # 处理"其他"类别
-    if "其他" in active_categories:
-        markdown += f"## **其他**\n"
-        markdown += "\n"
-
-        for idx, paper in enumerate(active_categories["其他"], 1):
+        for idx, paper in enumerate(active_categories[category], 1):
             markdown += f'**index:** {idx}<br />\n'
             markdown += f'**Date:** {target_date.strftime("%Y-%m-%d")}<br />\n'
             markdown += f'**Title:** {paper["title"]}<br />\n'
@@ -242,28 +183,58 @@ def df_to_markdown_detailed(papers_by_category: dict, target_date) -> str:
     return markdown
 
 
-def get_category_by_keywords(title, abstract, categories_config):
-    # 将标题和摘要合并，转换为小写进行匹配
+def get_category_by_keywords(title: str, abstract: str, categories_config: Dict) -> List[Tuple[str, float]]:
+    """
+    Perform hierarchical classification of papers based on keyword matching and priority rules.
+    
+    Args:
+        title (str): Paper title for primary context analysis
+        abstract (str): Paper abstract for comprehensive content analysis
+        categories_config (Dict): Configuration dictionary containing category definitions,
+                                keywords, weights, and priority levels
+    
+    Implementation Details:
+        1. Text Preprocessing:
+           - Case normalization for robust matching
+           - Combined analysis of title and abstract with differential weighting
+        
+        2. Scoring Mechanism:
+           - Primary score: Weighted keyword matches (0.15 base weight)
+           - Title bonus: Additional weight for title matches (0.05 weight)
+           - Priority multiplier: Category-specific importance scaling
+           - Negative keyword penalty: Exponential score reduction
+        
+        3. Classification Logic:
+           - Minimum confidence threshold: 0.2
+           - Priority category threshold: 60% of max score
+           - General category threshold: 40% of max score
+           - Hierarchical processing of priority categories
+    
+    Returns:
+        List[Tuple[str, float]]: List of (category, confidence_score) pairs,
+                                sorted by confidence in descending order
+    """
+    # Normalize input text for consistent matching
     text = (title + " " + abstract).lower()
     
-    # 初始化分数字典
+    # Initialize score accumulator
     scores = defaultdict(float)
     
-    # 对每个类别进行评分
+    # Compute category scores with priority weighting
     for category, config in categories_config.items():
         score = 0.0
         
-        # 正向关键词匹配
+        # Primary keyword matching with base weight
         for keyword, weight in config["keywords"]:
             keyword = keyword.lower()
             if keyword in text:
-                score += weight * 0.15  # 降低到原来的15%
+                score += weight * 0.15  # Base confidence weight
             
-            # 标题中出现的权重稍微高一些
+            # Additional weight for title matches
             if keyword in title.lower():
-                score += weight * 0.05  # 降低到原来的5%
+                score += weight * 0.05  # Title significance bonus
         
-        # 负向关键词检查
+        # Apply negative keyword penalties
         if "negative_keywords" in config:
             negative_score = 0
             for keyword in config["negative_keywords"]:
@@ -271,38 +242,36 @@ def get_category_by_keywords(title, abstract, categories_config):
                 if keyword in text:
                     negative_score += 1
             
+            # Exponential penalty for negative matches
             if negative_score > 0:
-                score *= math.exp(-negative_score)  # 增加负向关键词的惩罚力度
+                score *= math.exp(-negative_score)
         
-        # 应用优先级加成
+        # Apply category priority scaling
         priority = config.get("priority", 0)
         if priority > 0:
-            score *= (1 + priority * 0.1)  # 降低优先级加成
+            score *= (1 + priority * 0.1)  # Priority-based confidence adjustment
         
         scores[category] = score
     
-    # 获取最高分
+    # Validate against minimum confidence threshold
     max_score = max(scores.values()) if scores else 0
-    
-    # 如果最高分过低，返回空结果
-    if max_score < 0.2:  # 降低阈值
+    if max_score < 0.2:  # Minimum confidence requirement
         return []
     
-    # 优先处理高优先级类别
+    # Priority category processing
     high_priority_categories = ["扩散桥", "具身智能", "流模型"]
     for category in high_priority_categories:
         if category in scores:
             category_score = scores[category]
-            # 降低高优先级类别的阈值要求
             if category_score >= max_score * 0.6 and category_score >= 0.2:
                 return [(category, category_score)]
     
-    # 如果没有明显的高优先级类别，返回所有显著类别
-    significant_categories = []
-    for category, score in scores.items():
-        # 降低显著性阈值
-        if score >= max_score * 0.4:
-            significant_categories.append((category, score))
+    # General category processing
+    significant_categories = [
+        (category, score) 
+        for category, score in scores.items() 
+        if score >= max_score * 0.4  # Significance threshold
+    ]
     
     return sorted(significant_categories, key=lambda x: x[1], reverse=True)
 
