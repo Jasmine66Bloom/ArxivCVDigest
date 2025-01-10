@@ -6,6 +6,7 @@ import os
 import re
 import time
 from typing import Any, Dict
+import math
 
 import arxiv
 import requests
@@ -14,9 +15,9 @@ from tqdm import tqdm
 from chatglm_helper import ChatGLMHelper
 
 # 查询参数设置
-QUERY_DAYS_AGO = 4          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 700           # 最大返回论文数量
-MAX_WORKERS = 5            # 并行处理的最大线程数
+QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 200           # 最大返回论文数量
+MAX_WORKERS = 8            # 并行处理的最大线程数
 
 
 def extract_github_link(text, paper_url=None, title=None, authors=None, pdf_url=None):
@@ -119,7 +120,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                 paper['title_cn'],
                 paper['authors'],  # 已经是格式化好的字符串
                 f"<{paper['pdf_url']}>",
-                f"<{paper['github_link']}>" if paper['github_link'] != 'None' else 'None'
+                f"<{paper['github_link']}>" if paper['github_link'] != 'None' else 'None',
             ]
 
             # 处理特殊字符
@@ -156,7 +157,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                 paper['title_cn'],
                 paper['authors'],  # 已经是格式化好的字符串
                 f"<{paper['pdf_url']}>",
-                f"<{paper['github_link']}>" if paper['github_link'] != 'None' else 'None'
+                f"<{paper['github_link']}>" if paper['github_link'] != 'None' else 'None',
             ]
 
             # 处理特殊字符
@@ -241,47 +242,69 @@ def df_to_markdown_detailed(papers_by_category: dict, target_date) -> str:
     return markdown
 
 
-def save_papers_to_markdown(papers_by_category: dict, target_date):
-    """保存论文信息到Markdown文件"""
-    # 使用目标日期作为文件名
-    filename = target_date.strftime("%Y-%m-%d") + ".md"
-    year_month = target_date.strftime("%Y-%m")
-
-    # 获取当前文件所在目录(scripts)的父级路径
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-
-    # 设置基础目录，与scripts同级
-    data_base = os.path.join(parent_dir, 'data')
-    local_base = os.path.join(parent_dir, 'local')
-
-    # 创建年月子目录
-    data_year_month = os.path.join(data_base, year_month)
-    local_year_month = os.path.join(local_base, year_month)
-
-    # 创建所需的目录结构
-    os.makedirs(data_year_month, exist_ok=True)
-    os.makedirs(local_year_month, exist_ok=True)
-
-    # 生成完整的文件路径
-    table_filepath = os.path.join(data_year_month, filename)
-    detailed_filepath = os.path.join(local_year_month, filename)
-
-    # 生成标题
-    title = f"## [UPDATED!] **{target_date.strftime('%Y-%m-%d')}** (Update Time)\n\n"
-
-    # 保存表格格式的markdown文件到data/年-月目录
-    with open(table_filepath, 'w', encoding='utf-8') as f:
-        f.write(title)
-        f.write(df_to_markdown_table(papers_by_category, target_date))
-
-    # 保存详细格式的markdown文件到local/年-月目录
-    with open(detailed_filepath, 'w', encoding='utf-8') as f:
-        f.write(title)
-        f.write(df_to_markdown_detailed(papers_by_category, target_date))
-
-    print(f"\n表格格式文件已保存到: {table_filepath}")
-    print(f"详细格式文件已保存到: {detailed_filepath}")
+def get_category_by_keywords(title, abstract, categories_config):
+    # 将标题和摘要合并，转换为小写进行匹配
+    text = (title + " " + abstract).lower()
+    
+    # 初始化分数字典
+    scores = defaultdict(float)
+    
+    # 对每个类别进行评分
+    for category, config in categories_config.items():
+        score = 0.0
+        
+        # 正向关键词匹配
+        for keyword, weight in config["keywords"]:
+            keyword = keyword.lower()
+            if keyword in text:
+                score += weight * 0.15  # 降低到原来的15%
+            
+            # 标题中出现的权重稍微高一些
+            if keyword in title.lower():
+                score += weight * 0.05  # 降低到原来的5%
+        
+        # 负向关键词检查
+        if "negative_keywords" in config:
+            negative_score = 0
+            for keyword in config["negative_keywords"]:
+                keyword = keyword.lower()
+                if keyword in text:
+                    negative_score += 1
+            
+            if negative_score > 0:
+                score *= math.exp(-negative_score)  # 增加负向关键词的惩罚力度
+        
+        # 应用优先级加成
+        priority = config.get("priority", 0)
+        if priority > 0:
+            score *= (1 + priority * 0.1)  # 降低优先级加成
+        
+        scores[category] = score
+    
+    # 获取最高分
+    max_score = max(scores.values()) if scores else 0
+    
+    # 如果最高分过低，返回空结果
+    if max_score < 0.2:  # 降低阈值
+        return []
+    
+    # 优先处理高优先级类别
+    high_priority_categories = ["扩散桥", "具身智能", "流模型"]
+    for category in high_priority_categories:
+        if category in scores:
+            category_score = scores[category]
+            # 降低高优先级类别的阈值要求
+            if category_score >= max_score * 0.6 and category_score >= 0.2:
+                return [(category, category_score)]
+    
+    # 如果没有明显的高优先级类别，返回所有显著类别
+    significant_categories = []
+    for category, score in scores.items():
+        # 降低显著性阈值
+        if score >= max_score * 0.4:
+            significant_categories.append((category, score))
+    
+    return sorted(significant_categories, key=lambda x: x[1], reverse=True)
 
 
 def process_paper(paper, glm_helper, target_date):
@@ -333,20 +356,20 @@ def process_paper(paper, glm_helper, target_date):
             category = category_future.result()
             title_cn = title_cn_future.result()
 
-        return {
+        paper_info = {
             'title': title,
             'title_cn': title_cn,
-            'authors': authors_str,
             'abstract': abstract,
-            'paper_url': paper_url,
+            'authors': authors_str,
             'pdf_url': pdf_url,
             'github_link': github_link,
-            'analysis_result': analysis,
             'category': category,
             'published': published,
             'updated': updated,
             'is_updated': updated_date == target_date and published_date != target_date
         }
+
+        return paper_info
 
     except Exception as e:
         print(f"处理论文时出错: {str(e)}")
@@ -491,6 +514,49 @@ def get_cv_papers():
         print(f"错误信息: {str(e)}")
         print(f"发生时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         raise  # 抛出异常以便查看详细错误信息
+
+
+def save_papers_to_markdown(papers_by_category: dict, target_date):
+    """保存论文信息到Markdown文件"""
+    # 使用目标日期作为文件名
+    filename = target_date.strftime("%Y-%m-%d") + ".md"
+    year_month = target_date.strftime("%Y-%m")
+
+    # 获取当前文件所在目录(scripts)的父级路径
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+
+    # 设置基础目录，与scripts同级
+    data_base = os.path.join(parent_dir, 'data')
+    local_base = os.path.join(parent_dir, 'local')
+
+    # 创建年月子目录
+    data_year_month = os.path.join(data_base, year_month)
+    local_year_month = os.path.join(local_base, year_month)
+
+    # 创建所需的目录结构
+    os.makedirs(data_year_month, exist_ok=True)
+    os.makedirs(local_year_month, exist_ok=True)
+
+    # 生成完整的文件路径
+    table_filepath = os.path.join(data_year_month, filename)
+    detailed_filepath = os.path.join(local_year_month, filename)
+
+    # 生成标题
+    title = f"## [UPDATED!] **{target_date.strftime('%Y-%m-%d')}** (Update Time)\n\n"
+
+    # 保存表格格式的markdown文件到data/年-月目录
+    with open(table_filepath, 'w', encoding='utf-8') as f:
+        f.write(title)
+        f.write(df_to_markdown_table(papers_by_category, target_date))
+
+    # 保存详细格式的markdown文件到local/年-月目录
+    with open(detailed_filepath, 'w', encoding='utf-8') as f:
+        f.write(title)
+        f.write(df_to_markdown_detailed(papers_by_category, target_date))
+
+    print(f"\n表格格式文件已保存到: {table_filepath}")
+    print(f"详细格式文件已保存到: {detailed_filepath}")
 
 
 if __name__ == "__main__":
