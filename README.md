@@ -8,6 +8,7 @@ This project automatically fetches, analyzes, and organizes the latest Computer 
 
 
 ## 2025.02
+* [2025-02-18.md](./data/2025-02/2025-02-18.md)
 * [2025-02-17.md](./data/2025-02/2025-02-17.md)
 * [2025-02-16.md](./data/2025-02/2025-02-16.md)
 * [2025-02-15.md](./data/2025-02/2025-02-15.md)
