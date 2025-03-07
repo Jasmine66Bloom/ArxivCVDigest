@@ -312,7 +312,7 @@ class ChatGLMHelper:
             return []
         
         # Process high-priority categories
-        high_priority_categories = ["扩散桥", "具身智能", "流模型"]
+        high_priority_categories = ["基础智能与认知", "生成式建模", "多模态学习", "感知与识别", "医学影像与分析"]
         for category in high_priority_categories:
             if category in combined_scores:
                 score = combined_scores[category]

@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from collections import defaultdict
 import categories_config
-from categories_config import CATEGORY_DISPLAY_ORDER
+from categories_config import CATEGORY_DISPLAY_ORDER, CATEGORY_THRESHOLDS
 from chatglm_helper import ChatGLMHelper
 from typing import Dict, List, Tuple, Optional
 import traceback
@@ -97,7 +97,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
         return "今天没有相关论文。"
     
     # 表格列标题
-    headers = ['状态', '英文标题', '中文标题', '作者', 'PDF链接', '代码链接']
+    headers = ['状态', '英文标题', '中文标题', '作者', 'PDF链接', '代码/贡献']
     
     # 按照CATEGORY_DISPLAY_ORDER的顺序处理类别
     for category in CATEGORY_DISPLAY_ORDER:
@@ -132,6 +132,22 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                 else:
                     status = f"🆕 发布"
                 
+                # 合并代码链接和核心贡献
+                code_and_contribution = ""
+                if paper['github_url'] != 'None':
+                    code_and_contribution = f"[[代码]](<{paper['github_url']}>)"
+                    if "核心贡献" in paper:
+                        code_and_contribution += "<br />"
+                if "核心贡献" in paper:
+                    core_contribution = paper["核心贡献"]
+                    if " | " in core_contribution:
+                        items = core_contribution.split(" | ")
+                        code_and_contribution += "<br />".join([f"- {item.strip()}" for item in items])
+                    else:
+                        code_and_contribution += core_contribution
+                if not code_and_contribution:
+                    code_and_contribution = 'None'
+                
                 # 准备每个字段的值
                 values = [
                     status,
@@ -139,7 +155,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                     paper.get('title_zh', ''),
                     paper['authors'],  # 已经是格式化好的字符串
                     f"<{paper['pdf_url']}>",
-                    f"<{paper['github_url']}>" if paper['github_url'] != 'None' else 'None',
+                    code_and_contribution,
                 ]
                 
                 # 处理特殊字符
@@ -196,22 +212,20 @@ def df_to_markdown_detailed(papers_by_category: dict, target_date) -> str:
                 markdown += f'**Authors:** {paper["authors"]}<br />\n'
                 markdown += f'**PDF:** <{paper["pdf_url"]}><br />\n'
 
+                # 合并代码链接和核心贡献
+                markdown += '**Code/Contribution:**<br />\n'
                 if paper["github_url"] != 'None':
-                    markdown += f'**Code:** <{paper["github_url"]}><br />\n'
-                else:
-                    markdown += '**Code:** None<br />\n'
-
+                    markdown += f'- [[代码]](<{paper["github_url"]}>)<br />\n'
                 if "核心贡献" in paper:
-                    # 优化核心贡献的显示格式
                     core_contribution = paper["核心贡献"]
-                    # 如果包含分隔符 "|"，使用列表格式显示
                     if " | " in core_contribution:
-                        markdown += f'**Core Contribution:**<br />\n'
                         for item in core_contribution.split(" | "):
                             markdown += f'- {item.strip()}<br />\n'
                     else:
-                        markdown += f'**Core Contribution:** {core_contribution}<br />\n'
-                
+                        markdown += f'- {core_contribution}<br />\n'
+                elif paper["github_url"] == 'None':
+                    markdown += 'None<br />\n'
+
                 if "核心问题" in paper:
                     markdown += f'**Core Problem:** {paper["核心问题"]}<br />\n'
 
@@ -380,7 +394,7 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
         return []
     
     # 处理高优先级类别
-    high_priority_categories = ["智能视觉基础", "生成式视觉", "多模态智能"]
+    high_priority_categories = ["基础智能与认知", "生成式建模", "多模态学习", "感知与识别", "医学影像与分析"]
     for category in high_priority_categories:
         if category in scores:
             category_score = scores[category]
@@ -456,7 +470,7 @@ def process_paper(paper, glm_helper, target_date):
                 
                 # 确保分类结果是有效的类别
                 category_result = category_future.result()
-                if category_result and category_result in CATEGORY_DISPLAY_ORDER:
+                if category_result and category_result in CATEGORY_THRESHOLDS:
                     category = category_result
                 else:
                     print(f"警告: 无效的分类结果 '{category_result}'，使用默认分类'其他'")
