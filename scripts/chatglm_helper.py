@@ -487,7 +487,7 @@ class ChatGLMHelper:
             if semantic_results:
                 semantic_category, semantic_confidence = semantic_results[0]
                 if semantic_category != "其他":
-                    print(f"使用语义分类结果: {semantic_category} (置信度: {semantic_confidence:.2f})")
+                    # print(f"使用语义分类结果: {semantic_category} (置信度: {semantic_confidence:.2f})")
                     return semantic_category
             
             # 如果所有方法都失败，返回"其他"

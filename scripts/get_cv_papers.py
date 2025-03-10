@@ -18,8 +18,8 @@ import traceback
 import arxiv
 
 # 查询参数设置
-QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 200           # 最大返回论文数量
+QUERY_DAYS_AGO = 3          # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 500           # 最大返回论文数量
 MAX_WORKERS = 8            # 并行处理的最大线程数
 
 
@@ -447,7 +447,7 @@ def process_paper(paper, glm_helper, target_date):
         
         # 初始化默认值，避免异常时未定义
         github_link = "None"
-        category = "其他"
+        category = "其他 (Others)"  # 修改默认值为带英文的格式
         subcategory = "未指定"
         title_cn = f"[翻译失败] {title}"
         analysis = {}
@@ -470,11 +470,19 @@ def process_paper(paper, glm_helper, target_date):
                 
                 # 确保分类结果是有效的类别
                 category_result = category_future.result()
-                if category_result and category_result in CATEGORY_THRESHOLDS:
-                    category = category_result
-                else:
-                    print(f"警告: 无效的分类结果 '{category_result}'，使用默认分类'其他'")
-                    category = "其他"
+                if category_result:
+                    # 在CATEGORY_THRESHOLDS中查找匹配的类别（考虑带英文翻译的完整类别名）
+                    matched_category = None
+                    for full_category in CATEGORY_THRESHOLDS.keys():
+                        if full_category.startswith(category_result):
+                            matched_category = full_category
+                            break
+                    
+                    if matched_category:
+                        category = matched_category
+                    else:
+                        print(f"警告: 无效的分类结果 '{category_result}'，使用默认分类'其他 (Others)'")
+                        category = "其他 (Others)"
                     
                 title_cn = title_cn_future.result() or f"[翻译失败] {title}"
         except Exception as e:
