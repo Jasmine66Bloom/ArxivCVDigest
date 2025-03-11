@@ -18,8 +18,8 @@ import traceback
 import arxiv
 
 # 查询参数设置
-QUERY_DAYS_AGO = 3          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 500           # 最大返回论文数量
+QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 300           # 最大返回论文数量
 MAX_WORKERS = 8            # 并行处理的最大线程数
 
 
@@ -28,10 +28,10 @@ def extract_github_link(text, paper_url=None, title=None, authors=None, pdf_url=
 
     Args:
         text: 论文摘要文本
-        paper_url: 论文URL（未使用）
-        title: 论文标题（未使用）
-        authors: 作者列表（未使用）
-        pdf_url: PDF文件URL（未使用）
+        paper_url: 论文URL
+        title: 论文标题
+        authors: 作者列表
+        pdf_url: PDF文件URL
 
     Returns:
         str: GitHub链接或None
