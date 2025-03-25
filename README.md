@@ -7,6 +7,9 @@
 This project automatically fetches, analyzes, and organizes the latest Computer Vision research papers from ArXiv. It uses AI-powered classification to categorize papers and provides bilingual support.
 
 ## 2025.03
+* [2025-03-24.md](./data/2025-03/2025-03-24.md)
+* [2025-03-23.md](./data/2025-03/2025-03-23.md)
+* [2025-03-22.md](./data/2025-03/2025-03-22.md)
 * [2025-03-21.md](./data/2025-03/2025-03-21.md)
 * [2025-03-20.md](./data/2025-03/2025-03-20.md)
 * [2025-03-19.md](./data/2025-03/2025-03-19.md)
