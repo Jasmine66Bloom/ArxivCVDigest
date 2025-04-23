@@ -5,195 +5,167 @@
 
 # 类别阈值配置（越大越严格）
 CATEGORY_THRESHOLDS = {
-    # 一、表示学习方向
-    "表示学习 (Representation Learning)": {
+    # 1. 视觉表征与基础模型
+    "视觉表征与基础模型 (Visual Representation & Foundation Models)": {
         "threshold": 1.15,
         "subcategories": {
-            "基础模型 (Foundation Models)": 1.25,
-            "预训练模型 (Pretrained Models)": 1.25,
-            "视觉Transformer (Vision Transformers)": 1.25,
+            "大规模预训练模型 (Large-scale Pretrained Models)": 1.25,
+            "视觉Transformer架构 (Vision Transformer Architectures)": 1.25,
+            "多模态表征学习 (Multimodal Representation Learning)": 1.25,
         },
-        "priority": 5
+        "priority": 5.0
     },
     
-    "生成建模 (Generative Modeling)": {
+    # 2. 视觉识别与理解
+    "视觉识别与理解 (Visual Recognition & Understanding)": {
+        "threshold": 1.2,
+        "subcategories": {
+            "目标检测与定位 (Object Detection & Localization)": 1.3,
+            "图像分类与识别 (Image Classification & Recognition)": 1.3,
+            "语义/实例分割 (Semantic/Instance Segmentation)": 1.3,
+            "关键点定位与姿态估计 (Keypoint Detection & Pose Estimation)": 1.3,
+        },
+        "priority": 4.9
+    },
+    
+    # 3. 生成式视觉模型
+    "生成式视觉模型 (Generative Visual Modeling)": {
         "threshold": 1.15,
         "subcategories": {
-            "扩散模型 (Diffusion Models)": 1.25,
-            "生成对抗网络 (GANs)": 1.25,
-            "自回归模型 (Autoregressive Models)": 1.25,
+            "扬散概率模型 (Diffusion Probabilistic Models)": 1.25,
+            "时空一致性生成 (Spatiotemporal Coherent Generation)": 1.25,
+            "三维内容生成 (3D Content Generation)": 1.25,
+            "条件式生成与编辑 (Conditional Generation & Editing)": 1.25,
         },
         "priority": 4.8
     },
     
-    "多模态学习 (Multimodal Learning)": {
-        "threshold": 1.15,
+    # 4. 三维视觉与几何推理
+    "三维视觉与几何推理 (3D Vision & Geometric Reasoning)": {
+        "threshold": 1.2,
         "subcategories": {
-            "视觉语言模型 (Vision-Language Models)": 1.25,
-            "跨模态对齐 (Cross-modal Alignment)": 1.25,
-            "多模态融合 (Multimodal Fusion)": 1.25,
+            "神经辐射场表示 (Neural Radiance Field Representation)": 1.3,
+            "多视图几何重建 (Multi-view Geometric Reconstruction)": 1.3,
+            "单视图三维推理 (Single-view 3D Inference)": 1.3,
+            "视觉定位与映射 (Visual Localization & Mapping)": 1.3,
         },
         "priority": 4.7
     },
     
-    # 二、视觉感知方向
-    "目标检测识别 (Object Detection & Recognition)": {
+    # 5. 时序视觉分析
+    "时序视觉分析 (Temporal Visual Analysis)": {
         "threshold": 1.2,
         "subcategories": {
-            "二维检测 (2D Detection)": 1.3,
-            "三维检测 (3D Detection)": 1.3,
-            "多目标跟踪 (Multi-object Tracking)": 1.3,
-        },
-        "priority": 4.5
-    },
-    
-    "场景理解 (Scene Understanding)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "语义分割 (Semantic Segmentation)": 1.3,
-            "实例分割 (Instance Segmentation)": 1.3,
-            "全景分割 (Panoptic Segmentation)": 1.3,
-        },
-        "priority": 4.4
-    },
-    
-    "时序理解 (Temporal Understanding)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "动作识别 (Action Recognition)": 1.3,
-            "时序分析 (Temporal Analysis)": 1.3,
-            "视频预测 (Video Prediction)": 1.3,
-        },
-        "priority": 4.3
-    },
-    
-    # 三、几何视觉方向
-    "三维重建 (3D Reconstruction)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "单目重建 (Monocular Reconstruction)": 1.3,
-            "多视图重建 (Multi-view Reconstruction)": 1.3,
-            "神经隐式重建 (Neural Implicit Reconstruction)": 1.3,
-        },
-        "priority": 4.4
-    },
-    
-    "神经渲染 (Neural Rendering)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "神经辐射场 (Neural Radiance Fields)": 1.3,
-            "可控渲染 (Controllable Rendering)": 1.3,
-            "场景编辑 (Scene Editing)": 1.3,
-        },
-        "priority": 4.3
-    },
-    
-    "定位与映射 (Localization & Mapping)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "视觉SLAM (Visual SLAM)": 1.3,
-            "位姿估计 (Pose Estimation)": 1.3,
-            "语义建图 (Semantic Mapping)": 1.3,
-        },
-        "priority": 4.2
-    },
-    
-    # 四、学习算法方向
-    "自监督学习 (Self-supervised Learning)": {
-        "threshold": 1.15,
-        "subcategories": {
-            "对比学习 (Contrastive Learning)": 1.25,
-            "掩码自编码 (Masked Autoencoding)": 1.25,
-            "一致性学习 (Consistency Learning)": 1.25,
+            "动作识别与理解 (Action Recognition & Understanding)": 1.3,
+            "时序建模与预测 (Temporal Modeling & Prediction)": 1.3,
+            "视频目标跟踪 (Video Object Tracking)": 1.3,
+            "长时序视频理解 (Long-term Video Understanding)": 1.3,
         },
         "priority": 4.6
     },
     
-    "迁移与适应 (Transfer & Adaptation)": {
+    # 6. 自监督与表征学习
+    "自监督与表征学习 (Self-supervised & Representation Learning)": {
+        "threshold": 1.15,
+        "subcategories": {
+            "对比学习方法 (Contrastive Learning Methods)": 1.25,
+            "掩码自编码 (Masked Autoencoding)": 1.25,
+            "跨模态一致性学习 (Cross-modal Consistency Learning)": 1.25,
+            "表征知识迁移 (Representation Knowledge Transfer)": 1.25,
+        },
+        "priority": 4.5
+    },
+    
+    # 7. 计算效率与模型优化
+    "计算效率与模型优化 (Computational Efficiency & Model Optimization)": {
         "threshold": 1.2,
         "subcategories": {
-            "元学习 (Meta Learning)": 1.3,
-            "域适应 (Domain Adaptation)": 1.3,
-            "增量学习 (Incremental Learning)": 1.3,
+            "模型压缩与加速 (Model Compression & Acceleration)": 1.3,
+            "神经架构优化 (Neural Architecture Optimization)": 1.3,
+            "资源受限视觉计算 (Resource-constrained Visual Computing)": 1.3,
+            "推理优化 (Inference Optimization)": 1.3,
+        },
+        "priority": 4.4
+    },
+    
+    # 8. 鲁棒性与可靠性
+    "鲁棒性与可靠性 (Robustness & Reliability)": {
+        "threshold": 1.2,
+        "subcategories": {
+            "对抗鲁棒性 (Adversarial Robustness)": 1.3,
+            "分布外泛化 (Out-of-distribution Generalization)": 1.3,
+            "不确定性量化 (Uncertainty Quantification)": 1.3,
+            "视觉安全与隐私 (Visual Security & Privacy)": 1.3,
+        },
+        "priority": 4.3
+    },
+    
+    # 9. 低资源与高效学习
+    "低资源与高效学习 (Low-resource & Efficient Learning)": {
+        "threshold": 1.2,
+        "subcategories": {
+            "小样本学习 (Few-shot Learning)": 1.3,
+            "零/少样本泛化 (Zero/Few-shot Generalization)": 1.3,
+            "半监督与弱监督 (Semi/Weakly-supervised Learning)": 1.3,
+            "主动学习策略 (Active Learning Strategies)": 1.3,
         },
         "priority": 4.2
     },
     
-    "鲁棒学习 (Robust Learning)": {
+    # 10. 具身智能与交互视觉
+    "具身智能与交互视觉 (Embodied Intelligence & Interactive Vision)": {
         "threshold": 1.2,
         "subcategories": {
-            "对抗攻击 (Adversarial Attack)": 1.3,
-            "对抗防御 (Adversarial Defense)": 1.3,
-            "对抗训练 (Adversarial Training)": 1.3,
+            "视觉导航与路径规划 (Visual Navigation & Path Planning)": 1.3,
+            "视觉操作与控制 (Visual Manipulation & Control)": 1.3,
+            "交互式感知 (Interactive Perception)": 1.3,
+            "目标导向视觉决策 (Goal-oriented Visual Decision Making)": 1.3,
         },
         "priority": 4.1
     },
     
-    # 五、模型优化方向
-    "模型压缩加速 (Model Compression & Acceleration)": {
-        "threshold": 1.2,
+    # 11. 视觉-语言协同理解
+    "视觉-语言协同理解 (Vision-Language Joint Understanding)": {
+        "threshold": 1.15,
         "subcategories": {
-            "知识蒸馏 (Knowledge Distillation)": 1.3,
-            "网络剪枝 (Network Pruning)": 1.3,
-            "量化优化 (Quantization)": 1.3,
+            "视觉问答与推理 (Visual Question Answering & Reasoning)": 1.25,
+            "视觉内容描述 (Visual Content Description)": 1.25,
+            "多模态对话系统 (Multimodal Dialogue Systems)": 1.25,
+            "跨模态检索与匹配 (Cross-modal Retrieval & Matching)": 1.25,
         },
         "priority": 4.0
     },
     
-    "泛化与鲁棒性 (Generalization & Robustness)": {
+    # 12. 领域特定视觉应用
+    "领域特定视觉应用 (Domain-specific Visual Applications)": {
         "threshold": 1.2,
         "subcategories": {
-            "域泛化 (Domain Generalization)": 1.3,
-            "分布鲁棒性 (Distribution Robustness)": 1.3,
-            "不确定性建模 (Uncertainty Modeling)": 1.3,
-        },
-        "priority": 4.0
-    },
-    
-    "可解释性 (Interpretability)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "可视化解释 (Visual Explanation)": 1.3,
-            "归因分析 (Attribution Analysis)": 1.3,
-            "概念解释 (Concept Explanation)": 1.3,
-        },
-        "priority": 3.9
-    },
-    
-    # 六、应用方向
-    "医学影像分析 (Medical Image Analysis)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "疾病诊断 (Disease Diagnosis)": 1.3,
-            "医学分割 (Medical Segmentation)": 1.3,
-            "影像重建 (Image Reconstruction)": 1.3,
-        },
-        "priority": 4.0
-    },
-    
-    "智能驾驶 (Intelligent Driving)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "环境感知 (Environment Perception)": 1.3,
-            "轨迹预测 (Trajectory Prediction)": 1.3,
-            "决策规划 (Decision Planning)": 1.3,
-        },
-        "priority": 4.0
-    },
-    
-    "工业视觉 (Industrial Vision)": {
-        "threshold": 1.2,
-        "subcategories": {
-            "缺陷检测 (Defect Detection)": 1.3,
-            "质量控制 (Quality Control)": 1.3,
-            "工业测量 (Industrial Measurement)": 1.3,
+            "医学影像分析 (Medical Image Analysis)": 1.3,
+            "智能交通视觉 (Intelligent Transportation Vision)": 1.3,
+            "工业视觉检测 (Industrial Visual Inspection)": 1.3,
+            "遥感与地理信息 (Remote Sensing & Geospatial Information)": 1.3,
+            "创意媒体生成 (Creative Media Generation)": 1.3,
+            "增强/虚拟现实 (Augmented/Virtual Reality)": 1.3,
+            "生物特征识别 (Biometric Recognition)": 1.3,
         },
         "priority": 3.8
     },
     
+    # 13. 新兴理论与跨学科方向
+    "新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)": {
+        "threshold": 1.2,
+        "subcategories": {
+            "神经-符号视觉 (Neuro-symbolic Vision)": 1.3,
+            "视觉认知计算 (Visual Cognitive Computing)": 1.3,
+            "量子视觉算法 (Quantum Visual Algorithms)": 1.3,
+            "可解释视觉智能 (Explainable Visual Intelligence)": 1.3,
+        },
+        "priority": 3.5
+    },
+    
     # 其他类别
     "其他 (Others)": {
-        "threshold": 1.7,
+        "threshold": 1.5,
         "subcategories": {},
         "priority": 1
     }
@@ -201,35 +173,44 @@ CATEGORY_THRESHOLDS = {
 
 # 类别显示顺序配置
 CATEGORY_DISPLAY_ORDER = [
-    # 一、表示学习方向
-    "表示学习 (Representation Learning)",
-    "生成建模 (Generative Modeling)",
-    "多模态学习 (Multimodal Learning)",
+    # 1. 视觉表征与基础模型
+    "视觉表征与基础模型 (Visual Representation & Foundation Models)",
     
-    # 二、视觉感知方向
-    "目标检测识别 (Object Detection & Recognition)",
-    "场景理解 (Scene Understanding)",
-    "时序理解 (Temporal Understanding)",
+    # 2. 视觉识别与理解
+    "视觉识别与理解 (Visual Recognition & Understanding)",
     
-    # 三、几何视觉方向
-    "三维重建 (3D Reconstruction)",
-    "神经渲染 (Neural Rendering)",
-    "定位与映射 (Localization & Mapping)",
+    # 3. 生成式视觉模型
+    "生成式视觉模型 (Generative Visual Modeling)",
     
-    # 四、学习算法方向
-    "自监督学习 (Self-supervised Learning)",
-    "迁移与适应 (Transfer & Adaptation)",
-    "鲁棒学习 (Robust Learning)",
+    # 4. 三维视觉与几何推理
+    "三维视觉与几何推理 (3D Vision & Geometric Reasoning)",
     
-    # 五、模型优化方向
-    "模型压缩加速 (Model Compression & Acceleration)",
-    "泛化与鲁棒性 (Generalization & Robustness)",
-    "可解释性 (Interpretability)",
+    # 5. 时序视觉分析
+    "时序视觉分析 (Temporal Visual Analysis)",
     
-    # 六、应用方向
-    "医学影像分析 (Medical Image Analysis)",
-    "智能驾驶 (Intelligent Driving)",
-    "工业视觉 (Industrial Vision)",
+    # 6. 自监督与表征学习
+    "自监督与表征学习 (Self-supervised & Representation Learning)",
+    
+    # 7. 计算效率与模型优化
+    "计算效率与模型优化 (Computational Efficiency & Model Optimization)",
+    
+    # 8. 鲁棒性与可靠性
+    "鲁棒性与可靠性 (Robustness & Reliability)",
+    
+    # 9. 低资源与高效学习
+    "低资源与高效学习 (Low-resource & Efficient Learning)",
+    
+    # 10. 具身智能与交互视觉
+    "具身智能与交互视觉 (Embodied Intelligence & Interactive Vision)",
+    
+    # 11. 视觉-语言协同理解
+    "视觉-语言协同理解 (Vision-Language Joint Understanding)",
+    
+    # 12. 领域特定视觉应用
+    "领域特定视觉应用 (Domain-specific Visual Applications)",
+    
+    # 13. 新兴理论与跨学科方向
+    "新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)",
     
     # 其他类别
     "其他 (Others)"
@@ -241,95 +222,94 @@ CATEGORY_PROMPT = """
 
 2025年计算机视觉分类体系：
 
-一、表示学习方向
-1. 表示学习 (Representation Learning)：基础模型、预训练模型、视觉Transformer
-   定义：研究视觉表示学习的基础模型、多模态预训练和视觉Transformer等前沿课题。
+# 1. 视觉表征与基础模型
+"视觉表征与基础模型 (Visual Representation & Foundation Models)"：大规模预训练模型、视觉Transformer架构、多模态表征学习
+   定义：研究视觉表征学习的基础模型、大规模预训练和视觉Transformer等前沿技术。
 
-2. 生成建模 (Generative Modeling)：扩散模型、生成对抗网络、自回归模型
+# 2. 视觉识别与理解
+"视觉识别与理解 (Visual Recognition & Understanding)"：目标检测与定位、图像分类与识别、语义/实例分割、关键点定位与姿态估计
+   定义：研究计算机视觉的基础识别任务和技术，如目标检测、图像分类、分割和姿态估计等。
+
+# 3. 生成式视觉模型
+"生成式视觉模型 (Generative Visual Modeling)"：扬散概率模型、时空一致性生成、三维内容生成、条件式生成与编辑
    定义：研究生成高质量视觉内容的方法，包括图像、视频和3D内容的生成与编辑。
 
-3. 多模态学习 (Multimodal Learning)：视觉语言模型、跨模态对齐、多模态融合
-   定义：研究视觉与其他模态（如语言、音频）的协同理解和交互，包括视觉-语言模型和跨模态推理。
+# 4. 三维视觉与几何推理
+"三维视觉与几何推理 (3D Vision & Geometric Reasoning)"：神经辐射场表示、多视图几何重建、单视图三维推理、视觉定位与映射
+   定义：研究三维视觉和几何推理的技术，如NeRF、多视图重建、单视图3D推理和SLAM等。
 
-二、视觉感知方向
-4. 目标检测识别 (Object Detection & Recognition)：二维检测、三维检测、多目标跟踪
-   定义：研究计算机视觉的基础任务和技术，如检测、分割、分类和视频理解等。
+# 5. 时序视觉分析
+"时序视觉分析 (Temporal Visual Analysis)"：动作识别与理解、时序建模与预测、视频目标跟踪、长时序视频理解
+   定义：研究视觉时序建模的任务和技术，如动作识别、时序分析、目标跟踪和视频预测等。
 
-5. 场景理解 (Scene Understanding)：语义分割、实例分割、全景分割
-   定义：研究视觉场景解析的任务和技术，如语义分割、实例分割和全景分割等。
+# 6. 自监督与表征学习
+"自监督与表征学习 (Self-supervised & Representation Learning)"：对比学习方法、掩码自编码、跨模态一致性学习、表征知识迁移
+   定义：研究自监督学习和表征学习的方法，如对比学习、掩码自编码和跨模态一致性学习等。
 
-6. 时序理解 (Temporal Understanding)：动作识别、时序分析、视频预测
-   定义：研究视觉时序建模的任务和技术，如动作识别、时序分析和视频预测等。
+# 7. 计算效率与模型优化
+"计算效率与模型优化 (Computational Efficiency & Model Optimization)"：模型压缩与加速、神经架构优化、资源受限视觉计算、推理优化
+   定义：研究模型优化和计算效率的方法，如知识蒸馏、网络剪枝、量化优化和神经架构搜索等。
 
-三、几何视觉方向
-7. 三维重建 (3D Reconstruction)：单目重建、多视图重建、神经隐式重建
-   定义：研究视觉几何重建的任务和技术，如单目重建、多视图重建和神经隐式重建等。
+# 8. 鲁棒性与可靠性
+"鲁棒性与可靠性 (Robustness & Reliability)"：对抗鲁棒性、分布外泛化、不确定性量化、视觉安全与隐私
+   定义：研究模型鲁棒性和可靠性的方法，包括对抗鲁棒性、分布外泛化和不确定性量化等。
 
-8. 神经渲染 (Neural Rendering)：神经辐射场、可控渲染、场景编辑
-   定义：研究视觉场景建模的方法，包括神经辐射场、可控渲染和场景编辑等。
+# 9. 低资源与高效学习
+"低资源与高效学习 (Low-resource & Efficient Learning)"：小样本学习、零/少样本泛化、半监督与弱监督、主动学习策略
+   定义：研究在有限数据或计算资源条件下的高效学习方法，如小样本学习、半监督学习和主动学习等。
 
-9. 定位与映射 (Localization & Mapping)：视觉SLAM、位姿估计、语义建图
-   定义：研究视觉定位的任务和技术，如视觉SLAM、位姿估计和语义建图等。
+# 10. 具身智能与交互视觉
+"具身智能与交互视觉 (Embodied Intelligence & Interactive Vision)"：视觉导航与路径规划、视觉操作与控制、交互式感知、目标导向视觉决策
+   定义：研究具身智能和交互视觉的方法，如视觉导航、视觉操作和目标导向视觉决策等。
 
-四、学习算法方向
-10. 自监督学习 (Self-supervised Learning)：对比学习、掩码自编码、一致性学习
-   定义：研究自监督学习的方法和技术，如对比学习、掩码自编码和一致性学习等。
+# 11. 视觉-语言协同理解
+"视觉-语言协同理解 (Vision-Language Joint Understanding)"：视觉问答与推理、视觉内容描述、多模态对话系统、跨模态检索与匹配
+   定义：研究视觉与语言协同理解的方法，如视觉问答、图像描述和多模态对话等。
 
-11. 迁移与适应 (Transfer & Adaptation)：元学习、域适应、增量学习
-   定义：研究迁移学习的方法和技术，如元学习、域适应和增量学习等。
+# 12. 领域特定视觉应用
+"领域特定视觉应用 (Domain-specific Visual Applications)"：医学影像分析、智能交通视觉、工业视觉检测、遠感与地理信息、创意媒体生成、增强/虚拟现实、生物特征识别
+   定义：研究视觉技术在特定领域的应用，如医学影像、智能交通和工业视觉等。
 
-12. 鲁棒学习 (Robust Learning)：对抗攻击、对抗防御、对抗训练
-   定义：研究对抗鲁棒性的方法和技术，如对抗攻击、对抗防御和对抗训练等。
+# 13. 新兴理论与跨学科方向
+"新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)"：神经-符号视觉、视觉认知计算、量子视觉算法、可解释视觉智能
+   定义：研究视觉领域的新兴理论和跨学科方向，如神经-符号视觉、视觉认知计算和可解释视觉智能等。
 
-五、模型优化方向
-13. 模型压缩加速 (Model Compression & Acceleration)：知识蒸馏、网络剪枝、量化优化
-   定义：研究模型优化和推理效率的方法和技术，如知识蒸馏、网络剪枝和量化优化等。
-
-14. 泛化与鲁棒性 (Generalization & Robustness)：域泛化、分布鲁棒性、不确定性建模
-   定义：研究模型泛化能力和鲁棒性的方法和技术，如域泛化、分布鲁棒性和不确定性建模等。
-
-15. 可解释性 (Interpretability)：可视化解释、归因分析、概念解释
-   定义：研究模型可解释性和概念理解的方法和技术，如可视化解释、归因分析和概念解释等。
-
-六、应用方向
-16. 医学影像分析 (Medical Image Analysis)：疾病诊断、医学分割、影像重建
-   定义：研究视觉技术在医学领域的应用，如疾病诊断、医学分割和影像重建等。
-
-17. 智能驾驶 (Intelligent Driving)：环境感知、轨迹预测、决策规划
-   定义：研究视觉技术在自动驾驶领域的应用，如环境感知、轨迹预测和决策规划等。
-
-18. 工业视觉 (Industrial Vision)：缺陷检测、质量控制、工业测量
-   定义：研究视觉技术在工业领域的应用，如缺陷检测、质量控制和工业测量等。
-
-19. 其他 (Others)：不属于以上类别的论文
-    定义：其他不能明确归类到上述类别的视觉研究工作。
+# 其他类别
+"其他 (Others)"：不属于以上类别的论文
+   定义：其他不能明确归类到上述类别的视觉研究工作。
 
 分类指南：
 1. 首先分析论文的核心技术贡献和主要研究目标
 2. 考虑论文的方法、实验和应用场景
 3. 如果论文涉及多个类别，请选择最核心、最具创新性的方向
 4. 优先考虑技术本质而非应用领域（除非应用创新是论文的主要贡献）
-5. 只有在确实无法归类到前18个类别时，才选择"其他"类别
+5. 只有在确实无法归类到前13个类别时，才选择“其他”类别
 
 边界案例处理：
-- 如果论文同时涉及"生成建模"和"多模态学习"，但核心是文本引导的图像生成，应归类为"生成建模"
-- 如果论文研究NeRF技术，即使应用于医疗领域，也应优先归类为"神经渲染"而非"医学影像分析"
-- 如果论文提出新的视觉基础模型并展示了涌现能力，应归类为"表示学习"而非"目标检测识别"
+- 如果论文同时涉及“生成式视觉模型”和“视觉-语言协同理解”，但核心是文本引导的图像生成，应归类为“生成式视觉模型”
+- 如果论文研究NeRF技术，即使应用于医疗领域，也应优先归类为“三维视觉与几何推理”而非“领域特定视觉应用”
+- 如果论文提出新的视觉基础模型并展示了涌现能力，应归类为“视觉表征与基础模型”而非“视觉识别与理解”
 
 请分析论文的核心技术和主要贡献，选择最合适的一个类别。只返回类别名称，不要有任何解释或额外文本。
 """
 
 # 类别关键词配置
 CATEGORY_KEYWORDS = {
-    # 一、表示学习方向
-    "表示学习 (Representation Learning)": {
+    # 1. 视觉表征与基础模型
+    "视觉表征与基础模型 (Visual Representation & Foundation Models)": {
         "keywords": [
-            # 视觉基础模型（高权重）
+            # 大规模预训练模型（高权重）
             ("vision foundation model", 2.0),      # 视觉基础模型
-            ("vision transformer", 1.8),           # 视觉transformer
+            ("large-scale pretrained model", 2.0), # 大规模预训练模型
+            ("foundation model", 1.8),             # 基础模型
             
-            # 多模态预训练（高权重）
-            ("multimodal pretraining", 2.0),        # 多模态预训练
+            # 视觉Transformer架构（高权重）
+            ("vision transformer", 2.0),           # 视觉transformer
+            ("transformer architecture", 1.8),      # transformer架构
+            
+            # 多模态表征学习（高权重）
+            ("multimodal representation", 2.0),    # 多模态表征
+            ("multimodal pretraining", 2.0),      # 多模态预训练
             ("multimodal foundation model", 2.0),  # 多模态基础模型
         ],
         "negative_keywords": [
@@ -338,22 +318,54 @@ CATEGORY_KEYWORDS = {
         ]
     },
     
-    "生成建模 (Generative Modeling)": {
+    # 2. 视觉识别与理解
+    "视觉识别与理解 (Visual Recognition & Understanding)": {
         "keywords": [
-            # 扩散模型（高权重）
+            # 目标检测与定位（高权重）
+            ("object detection", 2.0),             # 目标检测
+            ("object localization", 2.0),          # 目标定位
+            ("detection transformer", 1.8),        # 检测 transformer
+            
+            # 图像分类与识别（高权重）
+            ("image classification", 2.0),         # 图像分类
+            ("image recognition", 2.0),            # 图像识别
+            
+            # 语义/实例分割（高权重）
+            ("semantic segmentation", 2.0),        # 语义分割
+            ("instance segmentation", 2.0),        # 实例分割
+            
+            # 关键点定位与姿态估计（高权重）
+            ("keypoint detection", 2.0),           # 关键点检测
+            ("pose estimation", 2.0),              # 姿态估计
+        ],
+        "negative_keywords": [
+            ("generative", 1.0),                   # 生成式
+            ("3D reconstruction", 0.8),             # 3D重建
+        ]
+    },
+    
+    # 3. 生成式视觉模型
+    "生成式视觉模型 (Generative Visual Modeling)": {
+        "keywords": [
+            # 扬散概率模型（高权重）
             ("diffusion model", 2.0),              # 扩散模型
             ("latent diffusion", 2.0),             # 潜在扩散
             ("denoising diffusion", 2.0),          # 去噪扩散
             ("score-based", 1.8),                  # 基于分数
-            ("generative model", 1.8),             # 生成模型
             
-            # 生成对抗网络（高权重）
-            ("GANs", 2.0),                         # GANs
-            ("generative adversarial networks", 2.0), # 生成对抗网络
+            # 时空一致性生成（高权重）
+            ("spatiotemporal generation", 2.0),    # 时空生成
+            ("coherent generation", 2.0),          # 一致性生成
+            ("video generation", 1.8),             # 视频生成
             
-            # 自回归模型（高权重）
-            ("autoregressive model", 2.0),          # 自回归模型
-            ("autoregressive networks", 2.0),        # 自回归网络
+            # 三维内容生成（高权重）
+            ("3D content generation", 2.0),        # 3D内容生成
+            ("3D generative", 2.0),                # 3D生成
+            
+            # 条件式生成与编辑（高权重）
+            ("conditional generation", 2.0),        # 条件式生成
+            ("image editing", 2.0),                # 图像编辑
+            ("text-to-image", 2.0),                # 文本生成图像
         ],
         "negative_keywords": [
             ("recognition", 1.0),                  # 识别
@@ -361,389 +373,308 @@ CATEGORY_KEYWORDS = {
         ]
     },
     
-    "多模态学习 (Multimodal Learning)": {
+    # 4. 三维视觉与几何推理
+    "三维视觉与几何推理 (3D Vision & Geometric Reasoning)": {
         "keywords": [
-            # 视觉语言模型（高权重）
-            ("vision-language model", 2.0),        # 视觉-语言模型
-            ("visual-language pretraining", 2.0),  # 视觉-语言预训练
-            ("multimodal foundation model", 2.0),  # 多模态基础模型
-            ("CLIP", 1.8),                         # CLIP
-            ("visual-text", 1.8),                  # 视觉-文本
-            
-            # 跨模态对齐（高权重）
-            ("cross-modal alignment", 2.0),        # 跨模态对齐
-            ("multimodal alignment", 2.0),         # 多模态对齐
-            ("vision-language alignment", 2.0),    # 视觉-语言对齐
-            ("joint embedding", 1.8),              # 联合嵌入
-            ("contrastive learning", 1.8),         # 对比学习
-            
-            # 多模态融合（高权重）
-            ("multimodal fusion", 2.0),            # 多模态融合
-            ("audio-visual", 2.0),                 # 音视频
-            ("tactile-visual", 2.0),               # 触觉-视觉
-            ("multimodal perception", 1.8),        # 多模态感知
-            ("cross-sensory", 1.8),                # 跨感官
-        ],
-        "negative_keywords": [
-            ("unimodal", 1.0),                     # 单模态
-            ("vision-only", 1.0),                  # 仅视觉
-        ]
-    },
-    
-    # 二、视觉感知方向
-    "目标检测识别 (Object Detection & Recognition)": {
-        "keywords": [
-            # 二维检测（高权重）
-            ("2D detection", 2.0),             # 二维检测
-            ("instance recognition", 2.0),         # 实例识别
-            ("object recognition", 2.0),           # 目标识别
-            ("face recognition", 1.8),             # 人脸识别
-            ("pedestrian detection", 1.8),         # 行人检测
-            
-            # 三维检测（高权重）
-            ("3D detection", 2.0),                # 三维检测
-            ("3D generative", 2.0),                # 3D生成式
-            ("shape generation", 1.8),             # 形状生成
-            
-            # 多目标跟踪（高权重）
-            ("multi-object tracking", 2.0),        # 多目标跟踪
-            ("temporal modeling", 2.0),            # 时序建模
-            ("activity recognition", 1.8),         # 活动识别
-            ("video classification", 1.8),         # 视频分类
-        ],
-        "negative_keywords": [
-            ("multimodal", 1.0),                   # 多模态
-        ]
-    },
-    
-    "场景理解 (Scene Understanding)": {
-        "keywords": [
-            # 语义分割（高权重）
-            ("semantic segmentation", 2.0),        # 语义分割
-            ("instance segmentation", 2.0),        # 实例分割
-            ("panoptic segmentation", 2.0),        # 全景分割
-            ("medical segmentation", 1.8),         # 医学分割
-            
-            # 多标签分类（高权重）
-            ("multi-label classification", 2.0),   # 多标签分类
-        ],
-        "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
-        ]
-    },
-    
-    "时序理解 (Temporal Understanding)": {
-        "keywords": [
-            # 动作识别（高权重）
-            ("action recognition", 2.0),           # 动作识别
-            ("temporal modeling", 2.0),            # 时序建模
-            ("activity recognition", 2.0),         # 活动识别
-            ("video classification", 1.8),         # 视频分类
-        ],
-        "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
-        ]
-    },
-    
-    # 三、几何视觉方向
-    "三维重建 (3D Reconstruction)": {
-        "keywords": [
-            # 单目重建（高权重）
-            ("monocular reconstruction", 2.0),        # 单目重建
-            ("single-view reconstruction", 2.0),      # 单视角重建
-            
-            # 多视图重建（高权重）
-            ("multi-view reconstruction", 2.0),       # 多视角重建
-            ("multi-view stereo", 2.0),              # 多视角立体
-            ("structure from motion", 2.0),          # 运动结构恢复
-            
-            # 神经隐式重建（高权重）
-            ("neural implicit reconstruction", 2.0),      # 神经隐式重建
-            ("neural implicit surface", 2.0),      # 神经隐式表面
-            ("implicit geometric", 2.0),           # 隐式几何
-            ("implicit representation", 2.0),      # 隐式表示
-            ("signed distance function", 2.0),     # 符号距离函数
-            ("occupancy network", 1.8),            # 占用网络
-        ],
-        "negative_keywords": [
-            ("2D only", 1.0),                      # 仅2D
-            ("3D only", 1.0),                      # 仅3D
-            ("multimodal", 1.0),                   # 多模态
-        ]
-    },
-    
-    "神经渲染 (Neural Rendering)": {
-        "keywords": [
-            # 神经辐射场（高权重）
-            ("neural radiance field", 2.0),        # 神经辐射场
+            # 神经辐射场表示（高权重）
+            ("neural radiance field", 2.0),         # 神经辐射场
             ("NeRF", 2.0),                         # NeRF
-            ("neural rendering", 2.0),             # 神经渲染
-            ("volumetric rendering", 1.8),         # 体积渲染
-            ("3D gaussian splatting", 2.0),        # 3D高斯散射
+            ("3D representation", 1.8),            # 3D表示
             
-            # 可控渲染（高权重）
-            ("controllable rendering", 2.0),         # 可控渲染
-            ("style transfer", 1.8),               # 风格迁移
-            ("physical consistency", 1.8),         # 物理一致性
-            ("dynamics-aware", 1.8),               # 动力学感知
+            # 多视图几何重建（高权重）
+            ("multi-view reconstruction", 2.0),     # 多视图重建
+            ("geometric reconstruction", 2.0),      # 几何重建
+            ("structure from motion", 1.8),         # 运动恢复结构
+            
+            # 单视图三维推理（高权重）
+            ("single-view 3D", 2.0),               # 单视图3D
+            ("monocular 3D", 2.0),                 # 单目3D
+            ("depth estimation", 1.8),             # 深度估计
+            
+            # 视觉定位与映射（高权重）
+            ("visual localization", 2.0),          # 视觉定位
+            ("SLAM", 2.0),                         # SLAM
+            ("visual mapping", 1.8),               # 视觉映射
         ],
         "negative_keywords": [
-            ("2D only", 1.0),                      # 仅2D
-            ("3D only", 1.0),                      # 仅3D
-            ("multimodal", 1.0),                   # 多模态
+            ("2D only", 1.0),                     # 仅2D
+            ("image-level", 0.8),                  # 图像级别
         ]
     },
     
-    "定位与映射 (Localization & Mapping)": {
+    # 5. 时序视觉分析
+    "时序视觉分析 (Temporal Visual Analysis)": {
         "keywords": [
-            # 视觉SLAM（高权重）
-            ("visual SLAM", 2.0),                # 视觉SLAM
-            ("structure from motion", 2.0),          # 运动结构恢复
+            # 动作识别与理解（高权重）
+            ("action recognition", 2.0),             # 动作识别
+            ("action understanding", 2.0),           # 动作理解
+            ("human activity recognition", 1.8),     # 人类活动识别
             
-            # 位姿估计（高权重）
-            ("pose estimation", 2.0),             # 位姿估计
-            ("camera pose estimation", 2.0),       # 相机位姿估计
-            ("object pose estimation", 1.8),       # 物体位姿估计
+            # 时序建模与预测（高权重）
+            ("temporal modeling", 2.0),              # 时序建模
+            ("video prediction", 2.0),               # 视频预测
+            ("future prediction", 1.8),              # 未来预测
             
-            # 语义建图（高权重）
-            ("semantic mapping", 2.0),             # 语义建图
-            ("place recognition", 2.0),          # 地点识别
-            ("scene understanding", 1.8),          # 场景理解
+            # 视频目标跟踪（高权重）
+            ("video object tracking", 2.0),          # 视频目标跟踪
+            ("multi-object tracking", 2.0),          # 多目标跟踪
+            ("visual tracking", 1.8),                # 视觉跟踪
+            
+            # 长时序视频理解（高权重）
+            ("long-term video understanding", 2.0),   # 长时序视频理解
+            ("video summarization", 2.0),            # 视频摘要
+            ("video captioning", 1.8),               # 视频描述
         ],
         "negative_keywords": [
-            ("2D only", 1.0),                      # 仅2D
-            ("3D only", 1.0),                      # 仅3D
-            ("multimodal", 1.0),                   # 多模态
+            ("static image", 1.0),                   # 静态图像
+            ("single frame", 0.8),                   # 单帧
         ]
     },
     
-    # 四、学习算法方向
-    "自监督学习 (Self-supervised Learning)": {
+    # 6. 自监督与表征学习
+    "自监督与表征学习 (Self-supervised & Representation Learning)": {
         "keywords": [
-            # 对比学习（高权重）
+            # 对比学习方法（高权重）
             ("contrastive learning", 2.0),         # 对比学习
             ("contrastive representation", 2.0),    # 对比表征
-            ("contrastive self-supervised", 2.0),     # 对比自监督
+            ("SimCLR", 1.8),                       # SimCLR
             
             # 掩码自编码（高权重）
-            ("masked autoencoding", 2.0),           # 掩码自编码
-            ("masked reconstruction", 2.0),           # 掩码重建
-            ("masked denoising", 2.0),                # 掩码去噪
+            ("masked autoencoding", 2.0),          # 掩码自编码
+            ("MAE", 2.0),                          # MAE
+            ("masked prediction", 1.8),             # 掩码预测
             
-            # 一致性学习（高权重）
-            ("consistency learning", 2.0),          # 一致性学习
-            ("temporal consistency", 2.0),            # 时间一致性
-            ("domain consistency", 1.8),             # 域一致性
+            # 跨模态一致性学习（高权重）
+            ("cross-modal consistency", 2.0),       # 跨模态一致性
+            ("multimodal consistency", 2.0),        # 多模态一致性
+            
+            # 表征知识迁移（高权重）
+            ("representation transfer", 2.0),       # 表征迁移
+            ("knowledge transfer", 2.0),            # 知识迁移
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("supervised", 1.0),                   # 监督式
+            ("labeled data", 0.8),                 # 标注数据
         ]
     },
     
-    "迁移与适应 (Transfer & Adaptation)": {
+    # 7. 计算效率与模型优化
+    "计算效率与模型优化 (Computational Efficiency & Model Optimization)": {
         "keywords": [
-            # 元学习（高权重）
-            ("meta learning", 2.0),                # 元学习
-            ("meta-learning", 2.0),                  # 元学习
-            ("learning to learn", 2.0),                # 学习如何学习
+            # 模型压缩与加速（高权重）
+            ("model compression", 2.0),             # 模型压缩
+            ("model acceleration", 2.0),            # 模型加速
+            ("knowledge distillation", 1.8),        # 知识蒸馏
             
-            # 域适应（高权重）
-            ("domain adaptation", 2.0),                # 域适应
-            ("domain generalization", 2.0),              # 域泛化
-            ("cross-domain", 2.0),                     # 跨域
-            ("out-of-distribution", 2.0),             # 分布外
+            # 神经架构优化（高权重）
+            ("neural architecture", 2.0),           # 神经架构
+            ("architecture optimization", 2.0),      # 架构优化
+            ("NAS", 1.8),                           # 神经架构搜索
             
-            # 增量学习（高权重）
-            ("incremental learning", 2.0),            # 增量学习
-            ("continual learning", 2.0),                # 持续学习
-            ("class incremental", 1.8),                  # 类别增量
-            ("task incremental", 1.8),                  # 任务增量
+            # 资源受限视觉计算（高权重）
+            ("resource-constrained", 2.0),          # 资源受限
+            ("efficient inference", 2.0),           # 高效推理
+            
+            # 推理优化（高权重）
+            ("inference optimization", 2.0),         # 推理优化
+            ("quantization", 2.0),                  # 量化
+            ("pruning", 2.0),                       # 剪枝
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("accuracy only", 1.0),                 # 仅精度
+            ("theoretical", 0.8),                   # 理论的
         ]
     },
     
-    "鲁棒学习 (Robust Learning)": {
+    # 8. 鲁棒性与可靠性
+    "鲁棒性与可靠性 (Robustness & Reliability)": {
         "keywords": [
-            # 对抗攻击（高权重）
-            ("adversarial attack", 2.0),                # 对抗攻击
-            ("adversarial example", 2.0),                # 对抗示例
-            ("adversarial training", 2.0),                # 对抗训练
-            
-            # 对抗防御（高权重）
-            ("adversarial defense", 2.0),                # 对抗防御
-            ("robust perception", 2.0),                # 鲁棒感知
-            ("robustness", 2.0),                # 鲁棒性
-            
             # 对抗鲁棒性（高权重）
-            ("adversarial robustness", 2.0),                # 对抗鲁棒性
-            ("out-of-distribution", 2.0),                # 分布外
-            ("domain robustness", 1.8),                # 域鲁棒性
+            ("adversarial robustness", 2.0),        # 对抗鲁棒性
+            ("adversarial attack", 2.0),            # 对抗攻击
+            ("adversarial defense", 2.0),           # 对抗防御
             
-            # 对抗训练（高权重）
-            ("adversarial training", 2.0),                # 对抗训练
-            ("confidence calibration", 1.8),                # 置信度校准
-            ("probabilistic vision", 1.8),                # 概率视觉
+            # 分布外泛化（高权重）
+            ("out-of-distribution", 2.0),          # 分布外
+            ("distribution generalization", 2.0),    # 分布泛化
+            ("domain generalization", 1.8),         # 域泛化
+            
+            # 不确定性量化（高权重）
+            ("uncertainty quantification", 2.0),     # 不确定性量化
+            ("uncertainty estimation", 2.0),         # 不确定性估计
+            
+            # 视觉安全与隐私（高权重）
+            ("visual security", 2.0),               # 视觉安全
+            ("visual privacy", 2.0),                # 视觉隐私
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("accuracy only", 1.0),                 # 仅精度
+            ("standard benchmark", 0.8),            # 标准基准
         ]
     },
     
-    # 五、模型优化方向
-    "模型压缩加速 (Model Compression & Acceleration)": {
+    # 9. 低资源与高效学习
+    "低资源与高效学习 (Low-resource & Efficient Learning)": {
         "keywords": [
-            # 知识蒸馏（高权重）
-            ("knowledge distillation", 2.0),       # 知识蒸馏
-            ("distillation", 2.0),                # 蒸馏
-            ("knowledge transfer", 2.0),                # 知识转移
+            # 小样本学习（高权重）
+            ("few-shot learning", 2.0),             # 小样本学习
+            ("few-shot", 2.0),                      # 小样本
             
-            # 网络剪枝（高权重）
-            ("network pruning", 2.0),                # 网络剪枝
-            ("sparse activation", 2.0),                # 稀疏激活
-            ("conditional computation", 1.8),                # 条件计算
+            # 零/少样本泛化（高权重）
+            ("zero-shot", 2.0),                     # 零样本
+            ("few-shot generalization", 2.0),        # 小样本泛化
             
-            # 量化优化（高权重）
-            ("quantization", 2.0),                # 量化
-            ("quantization-aware", 2.0),                # 量化感知
-            ("quantization-aware training", 2.0),                # 量化感知训练
+            # 半监督与弱监督（高权重）
+            ("semi-supervised", 2.0),               # 半监督
+            ("weakly-supervised", 2.0),             # 弱监督
+            
+            # 主动学习策略（高权重）
+            ("active learning", 2.0),               # 主动学习
+            ("learning strategies", 2.0),           # 学习策略
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("large dataset", 1.0),                 # 大数据集
+            ("fully supervised", 0.8),              # 全监督
         ]
     },
     
-    "泛化与鲁棒性 (Generalization & Robustness)": {
+    # 10. 具身智能与交互视觉
+    "具身智能与交互视觉 (Embodied Intelligence & Interactive Vision)": {
         "keywords": [
-            # 域泛化（高权重）
-            ("domain generalization", 2.0),                # 域泛化
-            ("out-of-distribution", 2.0),                # 分布外
-            ("cross-domain", 2.0),                # 跨域
+            # 视觉导航与路径规划（高权重）
+            ("visual navigation", 2.0),              # 视觉导航
+            ("path planning", 2.0),                  # 路径规划
+            ("embodied navigation", 1.8),            # 具身导航
             
-            # 分布鲁棒性（高权重）
-            ("distribution robustness", 2.0),                # 分布鲁棒性
-            ("robustness", 2.0),                # 鲁棒性
+            # 视觉操作与控制（高权重）
+            ("visual manipulation", 2.0),            # 视觉操作
+            ("visual control", 2.0),                 # 视觉控制
+            ("robotic manipulation", 1.8),           # 机器人操作
             
-            # 不确定性建模（高权重）
-            ("uncertainty modeling", 2.0),                # 不确定性建模
-            ("uncertainty quantification", 2.0),                # 不确定性量化
-            ("bayesian vision", 2.0),                # 贝叶斯视觉
-            ("probabilistic vision", 1.8),                # 概率视觉
+            # 交互式感知（高权重）
+            ("interactive perception", 2.0),          # 交互式感知
+            ("embodied interaction", 2.0),           # 具身交互
+            
+            # 目标导向视觉决策（高权重）
+            ("goal-oriented vision", 2.0),           # 目标导向视觉
+            ("visual decision making", 2.0),         # 视觉决策
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("passive perception", 1.0),             # 被动感知
+            ("static scene", 0.8),                   # 静态场景
         ]
     },
     
-    "可解释性 (Interpretability)": {
+    # 11. 视觉-语言协同理解
+    "视觉-语言协同理解 (Vision-Language Joint Understanding)": {
         "keywords": [
-            # 可视化解释（高权重）
-            ("visual explanation", 2.0),                # 视觉解释
-            ("attribution method", 2.0),                # 归因方法
-            ("saliency map", 2.0),                # 显著图
+            # 视觉问答与推理（高权重）
+            ("visual question answering", 2.0),      # 视觉问答
+            ("VQA", 2.0),                           # VQA
+            ("visual reasoning", 2.0),               # 视觉推理
             
-            # 归因分析（高权重）
-            ("attribution analysis", 2.0),                # 归因分析
-            ("concept explanation", 2.0),                # 概念解释
-            ("concept learning", 1.8),                # 概念学习
+            # 视觉内容描述（高权重）
+            ("image captioning", 2.0),               # 图像描述
+            ("visual description", 2.0),             # 视觉描述
+            ("visual content description", 1.8),      # 视觉内容描述
+            
+            # 多模态对话系统（高权重）
+            ("multimodal dialogue", 2.0),            # 多模态对话
+            ("visual dialogue", 2.0),                # 视觉对话
+            ("conversational agents", 1.8),          # 对话代理
+            
+            # 跨模态检索与匹配（高权重）
+            ("cross-modal retrieval", 2.0),          # 跨模态检索
+            ("vision-language matching", 2.0),        # 视觉-语言匹配
+            ("image-text matching", 1.8),             # 图像-文本匹配
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("vision-only", 1.0),                    # 仅视觉
+            ("language-only", 0.8),                  # 仅语言
         ]
     },
     
-    # 六、应用方向
-    "医学影像分析 (Medical Image Analysis)": {
+    # 12. 领域特定视觉应用
+    "领域特定视觉应用 (Domain-specific Visual Applications)": {
         "keywords": [
-            # 疾病诊断（高权重）
-            ("disease diagnosis", 2.0),                # 疾病诊断
-            ("healthcare monitoring", 2.0),                # 健康监测
-            ("clinical vision", 1.8),                # 临床视觉
-            ("biomedical imaging", 1.8),                # 生物医学影像
+            # 医学影像分析（高权重）
+            ("medical image analysis", 2.0),          # 医学影像分析
+            ("medical imaging", 2.0),                 # 医学成像
+            ("disease diagnosis", 1.8),               # 疾病诊断
             
-            # 医学分割（高权重）
-            ("medical segmentation", 2.0),                # 医学分割
-            ("semantic segmentation", 2.0),                # 语义分割
-            ("instance segmentation", 2.0),                # 实例分割
-            ("panoptic segmentation", 2.0),                # 全景分割
-            ("medical imaging", 2.0),                # 医学影像
+            # 智能交通视觉（高权重）
+            ("intelligent transportation", 2.0),      # 智能交通
+            ("autonomous driving", 2.0),              # 自动驾驶
+            ("traffic analysis", 1.8),                # 交通分析
             
-            # 影像重建（高权重）
-            ("image reconstruction", 2.0),                # 图像重建
-            ("healthcare imaging", 1.8),                # 健康影像
-            ("clinical imaging", 1.8),                # 临床影像
-            ("biomedical imaging", 1.8),                # 生物医学影像
-        ],
-        "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
-        ]
-    },
-    
-    "智能驾驶 (Intelligent Driving)": {
-        "keywords": [
-            # 环境感知（高权重）
-            ("environment perception", 2.0),                # 环境感知
-            ("self-driving perception", 2.0),                # 自动驾驶感知
-            ("vehicle perception", 2.0),                # 车辆感知
-            ("traffic scene understanding", 1.8),                # 交通场景理解
-            ("driving scene analysis", 1.8),                # 驾驶场景分析
-            
-            # 轨迹预测（高权重）
-            ("trajectory prediction", 2.0),                # 轨迹预测
-            ("motion prediction", 2.0),                # 运动预测
-            ("future prediction", 1.8),                # 未来预测
-            
-            # 决策规划（高权重）
-            ("decision planning", 2.0),                # 决策规划
-            ("decision making", 2.0),                # 决策制定
-            ("decision-making", 2.0),                # 决策制定
-            ("decision-making process", 1.8),                # 决策制定过程
-        ],
-        "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
-        ]
-    },
-    
-    "工业视觉 (Industrial Vision)": {
-        "keywords": [
-            # 缺陷检测（高权重）
+            # 工业视觉检测（高权重）
+            ("industrial inspection", 2.0),           # 工业检测
             ("defect detection", 2.0),                # 缺陷检测
-            ("quality control", 2.0),                # 质量控制
-            ("industrial measurement", 2.0),                # 工业测量
+            ("quality control", 1.8),                 # 质量控制
             
-            # 工业自动化（高权重）
-            ("industrial automation", 2.0),                # 工业自动化
-            ("manufacturing inspection", 2.0),                # 制造检测
-            ("quality control vision", 2.0),                # 质量控制视觉
-            
-            # 工业测量（高权重）
-            ("industrial measurement", 2.0),                # 工业测量
-            ("manufacturing measurement", 1.8),                # 制造测量
-            ("quality measurement", 1.8),                # 质量测量
+            # 遠感与地理信息（高权重）
+            ("remote sensing", 2.0),                  # 遠感
+            ("geospatial information", 2.0),          # 地理信息
+            ("satellite imagery", 1.8),               # 卫星图像
         ],
         "negative_keywords": [
-            ("recognition", 1.0),                  # 识别
-            ("classification", 1.0),               # 分类
+            ("general vision", 1.0),                  # 通用视觉
+            ("foundation model", 0.8),                # 基础模型
+        ]
+    },
+    
+    # 13. 新兴理论与跨学科方向
+    "新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)": {
+        "keywords": [
+            # 神经-符号视觉（高权重）
+            ("neuro-symbolic vision", 2.0),           # 神经-符号视觉
+            ("symbolic reasoning", 2.0),              # 符号推理
+            ("neural-symbolic", 1.8),                 # 神经-符号
+            
+            # 视觉认知计算（高权重）
+            ("visual cognitive computing", 2.0),      # 视觉认知计算
+            ("cognitive vision", 2.0),                # 认知视觉
+            ("brain-inspired vision", 1.8),           # 脑启发视觉
+            
+            # 量子视觉算法（高权重）
+            ("quantum visual algorithm", 2.0),        # 量子视觉算法
+            ("quantum vision", 2.0),                  # 量子视觉
+            
+            # 可解释视觉智能（高权重）
+            ("explainable visual intelligence", 2.0), # 可解释视觉智能
+            ("explainable vision", 2.0),              # 可解释视觉
+            ("interpretable vision", 1.8),            # 可解释视觉
+        ],
+        "negative_keywords": [
+            ("traditional vision", 1.0),               # 传统视觉
+            ("standard approach", 0.8),               # 标准方法
         ]
     },
     
     # 其他类别
     "其他 (Others)": {
         "keywords": [
+            # 不属于上述类别的论文（低权重）
             ("miscellaneous", 1.0),                # 杂项
             ("other", 1.0),                        # 其他
+            ("novel approach", 1.0),               # 新型方法
         ],
-        "negative_keywords": []
+        "negative_keywords": [
+            # 所有主要类别的关键词都是负面关键词
+            ("foundation model", 1.0),             # 基础模型
+            ("detection", 1.0),                    # 检测
+            ("segmentation", 1.0),                 # 分割
+            ("generative", 1.0),                   # 生成式
+            ("3D", 1.0),                           # 3D
+            ("temporal", 1.0),                     # 时序
+            ("self-supervised", 1.0),              # 自监督
+            ("efficiency", 1.0),                   # 效率
+            ("robustness", 1.0),                   # 鲁棒性
+            ("few-shot", 1.0),                     # 小样本
+            ("embodied", 1.0),                     # 具身
+            ("vision-language", 1.0),              # 视觉-语言
+            ("application", 1.0),                  # 应用
+            ("interdisciplinary", 1.0),            # 跨学科
+        ]
     }
 }
