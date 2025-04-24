@@ -160,133 +160,36 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
     for category in CATEGORY_DISPLAY_ORDER:
         if category not in active_categories:
             continue
-            
-        # 添加一级类别标题
+        # 只输出一次主类别标题
         markdown += f"\n## {category}\n\n"
-        
-        # 按子类别组织论文
         papers_by_subcategory = defaultdict(list)
-        
-        # 将所有论文分配到子类别
         for paper in active_categories[category]:
             subcategory = paper.get('subcategory', '')
             if subcategory and subcategory != "未指定":
                 papers_by_subcategory[subcategory].append(paper)
             elif category == "其他 (Others)":
-                # 对于"其他"类别，没有子类别的论文直接显示在主类别下
                 papers_by_subcategory["未分类"].append(paper)
-        
-        # 如果当前类别下没有带子类别的论文，跳过
         if not papers_by_subcategory and category != "其他 (Others)":
             continue
-            
-        # 处理子类别论文
-            
-        # 处理每个子类别
         for subcategory, papers in papers_by_subcategory.items():
-            # 添加二级类别标题
             markdown += f"\n### {subcategory}\n\n"
-            
-            # 创建表格头
             markdown += "|" + "|".join(headers) + "|\n"
             markdown += "|" + "|".join(["---"] * len(headers)) + "|\n"
-            
-            # 添加论文行
             for paper in papers:
-                # 确定论文状态
                 if paper['is_updated']:
                     status = f"📝 更新"
                 else:
                     status = f"🆕 发布"
-                
-                # 合并代码链接和精简后的核心贡献
-                code_and_contribution = ""
-                # 精简核心贡献内容
                 def summarize_contribution(core_contribution):
                     if not core_contribution:
                         return []
-                    # 分割为多条
-                    if "|" in core_contribution:
-                        items = [item.strip() for item in core_contribution.split("|")] 
-                    else:
-                        items = [core_contribution.strip()]
-                    # 去除模板化内容
-                    blacklist = ["代码开源", "提供数据集", "代码已开源", "数据集已公开"]
-                    items = [i for i in items if all(b not in i for b in blacklist)]
-                    # 只保留前两条
-                    items = items[:2]
-                    # 每条最多15字
-                    items = [(i[:15] + ("..." if len(i) > 15 else "")) for i in items]
-                    return items
-                contrib_list = []
-                if "核心贡献" in paper:
-                    contrib_list = summarize_contribution(paper["核心贡献"])
-                if paper['github_url'] != 'None':
-                    code_and_contribution = f"[代码]({paper['github_url']})"
-                    if contrib_list:
-                        code_and_contribution += "; " + "; ".join(contrib_list)
-                elif contrib_list:
-                    code_and_contribution = "; ".join(contrib_list)
-                else:
-                    code_and_contribution = '无'
-                
-                # 准备每个字段的值
-                values = [
-                    status,
-                    paper['title'],
-                    paper.get('title_zh', ''),
-                    paper['authors'],  # 已经是格式化好的字符串
-                    f"<{paper['pdf_url']}>",
-                    code_and_contribution,
-                ]
-                
-                # 处理特殊字符
-                values = [str(v).replace('\n', ' ').replace('|', '&#124;')
-                          for v in values]
-                
-                # 添加到表格
-                markdown += "|" + "|".join(values) + "|\n"
-            
-            # 在表格后添加空行
-            markdown += "\n"
-        
-        # 按子类别组织论文
-        # 已经在前面初始化了papers_by_subcategory，这里不需要再初始化
-            
-        # 处理每个子类别
-        for subcategory, papers in papers_by_subcategory.items():
-            # 添加二级类别标题
-            markdown += f"\n### {subcategory}\n\n"
-            
-            # 创建表格头
-            markdown += "|" + "|".join(headers) + "|\n"
-            markdown += "|" + "|".join(["---"] * len(headers)) + "|\n"
-            
-            # 添加论文
-            for paper in papers:
-                # 确定论文状态
-                if paper['is_updated']:
-                    status = f"📝 更新"
-                else:
-                    status = f"🆕 发布"
-                
-                # 合并代码链接和精简后的核心贡献
-                code_and_contribution = ""
-                # 精简核心贡献内容
-                def summarize_contribution(core_contribution):
-                    if not core_contribution:
-                        return []
-                    # 分割为多条
                     if "|" in core_contribution:
                         items = [item.strip() for item in core_contribution.split("|")]
                     else:
                         items = [core_contribution.strip()]
-                    # 去除模板化内容
                     blacklist = ["代码开源", "提供数据集", "代码已开源", "数据集已公开"]
                     items = [i for i in items if all(b not in i for b in blacklist)]
-                    # 只保留前两条
                     items = items[:2]
-                    # 每条最多15字
                     items = [(i[:15] + ("..." if len(i) > 15 else "")) for i in items]
                     return items
                 contrib_list = []
@@ -300,27 +203,17 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                     code_and_contribution = "; ".join(contrib_list)
                 else:
                     code_and_contribution = '无'
-                
-                # 准备每个字段的值
                 values = [
                     status,
                     paper['title'],
                     paper.get('title_zh', ''),
-                    paper['authors'],  # 已经是格式化好的字符串
+                    paper['authors'],
                     f"<{paper['pdf_url']}>",
                     code_and_contribution,
                 ]
-                
-                # 处理特殊字符
-                values = [str(v).replace('\n', ' ').replace('|', '&#124;')
-                          for v in values]
-                
-                # 添加到表格
+                values = [str(v).replace('\n', ' ').replace('|', '&#124;') for v in values]
                 markdown += "|" + "|".join(values) + "|\n"
-            
-            # 在每个表格后添加空行
             markdown += "\n"
-    
     return markdown
 
 

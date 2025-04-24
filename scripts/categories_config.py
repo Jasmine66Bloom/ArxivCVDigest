@@ -32,7 +32,7 @@ CATEGORY_THRESHOLDS = {
     "生成式视觉模型 (Generative Visual Modeling)": {
         "threshold": 1.15,
         "subcategories": {
-            "扬散概率模型 (Diffusion Probabilistic Models)": 1.25,
+            "扩散概率模型 (Diffusion Probabilistic Models)": 1.25,
             "时空一致性生成 (Spatiotemporal Coherent Generation)": 1.25,
             "三维内容生成 (3D Content Generation)": 1.25,
             "条件式生成与编辑 (Conditional Generation & Editing)": 1.25,
@@ -231,7 +231,7 @@ CATEGORY_PROMPT = """
    定义：研究计算机视觉的基础识别任务和技术，如目标检测、图像分类、分割和姿态估计等。
 
 # 3. 生成式视觉模型
-"生成式视觉模型 (Generative Visual Modeling)"：扬散概率模型、时空一致性生成、三维内容生成、条件式生成与编辑
+"生成式视觉模型 (Generative Visual Modeling)"：扩散概率模型、时空一致性生成、三维内容生成、条件式生成与编辑
    定义：研究生成高质量视觉内容的方法，包括图像、视频和3D内容的生成与编辑。
 
 # 4. 三维视觉与几何推理
@@ -347,7 +347,7 @@ CATEGORY_KEYWORDS = {
     # 3. 生成式视觉模型
     "生成式视觉模型 (Generative Visual Modeling)": {
         "keywords": [
-            # 扬散概率模型（高权重）
+            # 扩散概率模型（高权重）
             ("diffusion model", 2.0),              # 扩散模型
             ("latent diffusion", 2.0),             # 潜在扩散
             ("denoising diffusion", 2.0),          # 去噪扩散
