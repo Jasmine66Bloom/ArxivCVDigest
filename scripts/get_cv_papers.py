@@ -185,7 +185,7 @@ def df_to_markdown_table(papers_by_category: dict, target_date) -> str:
                     blacklist = ["代码开源", "提供数据集", "代码已开源", "数据集已公开"]
                     items = [i for i in items if all(b not in i for b in blacklist)]
                     items = items[:2]
-                    items = [(i[:15] + ("..." if len(i) > 15 else "")) for i in items]
+                    items = [(i[:50] + ("..." if len(i) > 50 else "")) for i in items]
                     return items
                 contrib_list = []
                 if "核心贡献" in paper:
