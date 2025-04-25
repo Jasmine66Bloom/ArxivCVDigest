@@ -621,6 +621,31 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
         "新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)"
     ]
     
+    # 检查是否有应用类别的特征
+    application_category = "领域特定视觉应用 (Domain-specific Visual Applications)"
+    has_application_features = False
+    application_score = 0
+    application_subcategory = None
+    
+    # 如果应用类别有足够的得分，则认为有应用特征 - 调整阈值为0.35，平衡准确性和覆盖率
+    if application_category in scores and scores[application_category] >= 0.35:
+        has_application_features = True
+        application_score = scores[application_category]
+        # 尝试获取应用类别的子类别
+        application_subcategory = get_subcategory(title, abstract, application_category, application_score)
+        
+        # 创建分类解释
+        explanation = {
+            "reason": "该论文具有明显的应用特征",
+            "score": round(application_score, 4),
+            "threshold": 0.35,
+            "key_matches": match_details.get(application_category, [])[:5],
+            "decision_method": "应用类别强制判断"
+        }
+        
+        # 如果有应用特征，直接返回应用类别及解释
+        return [(application_category, application_score, application_subcategory, explanation)]
+    
     # 首先尝试使用高优先级类别（大幅降低阈值）
     result_with_subcategories = []
     
@@ -661,139 +686,115 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
                 # 如果没有子类别，先保存结果，继续寻找其他可能有子类别的类别
                 result_with_subcategories.append((category, category_score, None))
     
-    # 如果高优先级类别中有结果，则返回第一个结果
-    if result_with_subcategories:
-        return [result_with_subcategories[0]]
+    # 收集候选类别
+    candidate_categories = []
     
-    # 处理所有类别
-    significant_categories = []
+    # 将高优先级类别的结果添加到候选类别中
+    if result_with_subcategories:
+        candidate_categories.extend(result_with_subcategories)
+    
+    # 处理所有类别，收集候选类别
     for category, score in scores.items():
+        # 跳过应用类别，因为它已经在前面处理过了
+        if category == application_category:
+            continue
+            
         if category in CATEGORY_THRESHOLDS:
             threshold = CATEGORY_THRESHOLDS[category]["threshold"]
-            # 大幅降低阈值以增加匹配率
-            if score >= threshold * 0.25:  # 从0.35降低到0.25
+            # 使用更宽松的阈值收集候选类别
+            if score >= threshold * 0.3:  
                 # 尝试获取子类别
                 subcategory = get_subcategory(title, abstract, category, score)
-                significant_categories.append((category, score, subcategory))
+                candidate_categories.append((category, score, subcategory))
         else:
-            # 对于没有定义阈值的类别，大幅降低相对阈值
-            if score >= max_score * 0.15:  # 从0.2降低到0.15
+            # 对于没有定义阈值的类别，使用更宽松的相对阈值
+            if score >= max_score * 0.2:  
                 # 尝试获取子类别
                 subcategory = get_subcategory(title, abstract, category, score)
-                significant_categories.append((category, score, subcategory))
-                
-    # 优先返回有子类别的结果
-    categories_with_subcategory = [item for item in significant_categories if item[2] is not None]
-    if categories_with_subcategory:
-        return sorted(categories_with_subcategory, key=lambda x: x[1], reverse=True)
+                candidate_categories.append((category, score, subcategory))
+    
+    # 如果有候选类别，使用ChatGLM做出最终决策
+    if candidate_categories:
+        # 按得分降序排序候选类别
+        sorted_candidates = sorted(candidate_categories, key=lambda x: x[1], reverse=True)
         
-    # 如果没有找到带子类别的结果，则返回所有显著类别的结果
-    if significant_categories:
-        # 按得分降序排序
-        return sorted(significant_categories, key=lambda x: x[1], reverse=True)
+        # 如果只有一个候选类别，直接返回
+        if len(sorted_candidates) == 1:
+            return [sorted_candidates[0]]
+        
+        # 如果有多个候选类别，使用ChatGLM做出决策
+        try:
+            from chatglm_helper import ChatGLMHelper
+            chatglm_helper = ChatGLMHelper()
+            
+            # 使用ChatGLM决策最终类别
+            final_category = chatglm_helper.decide_category(title, abstract, sorted_candidates)
+            
+            # 找到对应的候选类别元组
+            for candidate in sorted_candidates:
+                if candidate[0] == final_category:
+                    return [candidate]
+            
+            # 如果找不到对应的候选类别，返回得分最高的
+            return [sorted_candidates[0]]
+        except Exception as e:
+            print(f"ChatGLM决策分类出错: {str(e)}")
+            # 如果出错，返回得分最高的候选类别
+            return [sorted_candidates[0]]
     
-    # 如果没有显著类别，尝试增强的回退分类机制
-    result_with_subcategories = []
-    
-    # 找出得分最高的类别，即使它低于阈值
+    # 如果没有候选类别，使用最简单的回退机制
     if scores:
         # 按得分降序排序所有类别
         all_categories = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        top_category, top_score = all_categories[0]
         
-        # 考虑前八个得分最高的类别
-        for best_category, best_score in all_categories[:8]:
-            # 进一步降低最低阈值限制
-            if best_score >= 0.05:  # 从0.08降低到0.05
-                # 尝试获取子类别
-                subcategory = get_subcategory(title, abstract, best_category, best_score)
-                # 如果有子类别，优先使用该类别
-                if subcategory:
-                    result_with_subcategories.append((best_category, best_score, subcategory))
-                    break
-                # 如果得分超过0.07，也使用该类别
-                elif best_score >= 0.07:  # 从0.1降低到0.07
-                    result_with_subcategories.append((best_category, best_score, None))
-                    break
-        
-        # 智能回退机制：考虑类别相关性和组合评分
-        if not result_with_subcategories and all_categories:
-            # 1. 尝试找出相关类别组合
-            # 如果前两个类别得分接近且都较高，可能表明论文跨类别
-            if len(all_categories) >= 2:
-                top_category, top_score = all_categories[0]
-                second_category, second_score = all_categories[1]
-                
-                # 如果前两个类别得分接近（第二个至少是第一个的80%）
-                if second_score >= top_score * 0.8 and second_score > 0.05:
-                    # 检查这两个类别是否相关（通过关键词重叠判断）
-                    category_relation = calculate_category_relation(top_category, second_category, categories_config)
-                    
-                    # 如果类别相关，可以考虑使用组合评分
-                    if category_relation > 0.3:  # 相关性阈值
-                        # 使用组合得分提升置信度
-                        combined_score = (top_score + second_score * 0.5) * (1 + category_relation * 0.2)
-                        if combined_score > 0.08:  # 组合得分阈值
-                            subcategory = get_subcategory(title, abstract, top_category, combined_score)
-                            result_with_subcategories.append((top_category, combined_score, subcategory))
-                            # 添加分类解释
-                            match_details[top_category].append(f"相关类别加成 [{second_category}]: +{second_score * 0.5 * (1 + category_relation * 0.2):.2f}")
-                            return result_with_subcategories
+        # 如果最高得分超过一个最低阈值
+        if top_score >= 0.15:
+            # 尝试获取子类别
+            subcategory = get_subcategory(title, abstract, top_category, top_score)
             
-            # 2. 常规回退：使用得分最高的类别
-            best_category, best_score = all_categories[0]
+            # 创建分类解释
+            explanation = {
+                "reason": "没有匹配到显著类别，使用得分最高的类别",
+                "score": round(top_score, 4),
+                "threshold": 0.15,
+                "key_matches": match_details.get(top_category, [])[:5],
+                "decision_method": "回退分类机制"
+            }
             
-            # 根据得分级别使用不同策略
-            if best_score > 0.08:  # 较高置信度
-                subcategory = get_subcategory(title, abstract, best_category, best_score)
-                result_with_subcategories.append((best_category, best_score, subcategory))
-            elif best_score > 0.04:  # 中等置信度
-                # 尝试获取子类别
-                subcategory = get_subcategory(title, abstract, best_category, best_score)
-                # 添加置信度不高的说明
-                match_details[best_category].append("置信度中等，可能需要人工复核")
-                result_with_subcategories.append((best_category, best_score, subcategory))
-            elif best_score > 0.01:  # 低置信度但仍有一些匹配
-                # 尝试获取子类别，但不期望有结果
-                subcategory = get_subcategory(title, abstract, best_category, best_score)
-                # 添加置信度低的说明
-                match_details[best_category].append("置信度低，建议人工分类")
-                result_with_subcategories.append((best_category, best_score, subcategory))
+            return [(top_category, top_score, subcategory, explanation)]
     
-    # 如果仍然没有结果，返回空列表
-    if not result_with_subcategories:
-        return []
-    
-    # 增强的结果处理：添加置信度评分和分类解释
-    enhanced_results = []
-    for cat, score, subcat in result_with_subcategories:
-        # 计算置信度级别
-        if score >= 1.5:
-            confidence = "很高"
-        elif score >= 1.0:
-            confidence = "高"
-        elif score >= 0.7:
-            confidence = "中等"
-        elif score >= 0.4:
-            confidence = "低"
-        else:
-            confidence = "很低"
+    # 如果有候选类别，使用ChatGLM做出最终决策
+    if candidate_categories:
+        # 按得分降序排序候选类别
+        sorted_candidates = sorted(candidate_categories, key=lambda x: x[1], reverse=True)
         
-        # 获取匹配详情
-        match_info = match_details.get(cat, [])
+        # 如果只有一个候选类别，直接返回
+        if len(sorted_candidates) == 1:
+            return [sorted_candidates[0]]
         
-        # 创建分类解释
-        explanation = {
-            "confidence_level": confidence,
-            "score": round(score, 4),
-            "key_matches": match_info[:5] if match_info else [],  # 最多显示5个关键匹配
-            "threshold": CATEGORY_THRESHOLDS.get(cat, {}).get("threshold", "未定义") if cat in CATEGORY_THRESHOLDS else "未定义",
-            "match_count": len(match_info)
-        }
+        # 如果有多个候选类别，使用ChatGLM做出决策
+        try:
+            from chatglm_helper import ChatGLMHelper
+            chatglm_helper = ChatGLMHelper()
+            
+            # 使用ChatGLM决策最终类别
+            final_category = chatglm_helper.decide_category(title, abstract, sorted_candidates)
+            
+            # 找到对应的候选类别元组
+            for candidate in sorted_candidates:
+                if candidate[0] == final_category:
+                    return [candidate]
+            
+            # 如果找不到对应的候选类别，返回得分最高的
+            return [sorted_candidates[0]]
+        except Exception as e:
+            print(f"ChatGLM决策分类出错: {str(e)}")
+            # 如果出错，返回得分最高的候选类别
+            return [sorted_candidates[0]]
         
-        # 添加到增强结果中
-        enhanced_results.append((cat, round(score, 4), subcat, explanation))
-    
-    return enhanced_results
+    # 如果所有尝试都失败，返回空列表
+    return []
 
 
 def calculate_category_relation(category1, category2, categories_config):

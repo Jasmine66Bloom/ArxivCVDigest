@@ -1,6 +1,6 @@
 """ChatGLM助手：用于论文标题翻译和分类"""
 from zhipuai import ZhipuAI
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import time
 import re
 from collections import defaultdict
@@ -35,7 +35,7 @@ class ChatGLMHelper:
             context = f"""论文摘要开头：
 {abstract[:150]}..."""
 
-        # 改进的提示词，更结构化和清晰
+        # 改进的提示词，更结构化和清晰，强调不要翻译专业术语
         prompt = f"""任务：将计算机视觉领域的学术论文标题从英文翻译成中文。
 
 论文标题：
@@ -44,8 +44,12 @@ class ChatGLMHelper:
 {context}
 
 翻译要求：
-1. 保持计算机视觉领域专业术语的准确性
-2. 保留原文中的模型名称、缩写和专有名词
+1. 不要翻译专业用语、算法名称、模型名称、缩写和专有名词，必须原样保留
+2. 以下类型的术语必须原样保留：
+   - 模型名称：如 CLIP, ViT, BERT, GPT, ResNet, Transformer 等
+   - 算法名称：如 RANSAC, SLAM, NeRF, GAN, VAE 等
+   - 缩写：如 CNN, RNN, LSTM, 3D, RGB, IoU, mAP, FPS 等
+   - 数据集名称：如 COCO, ImageNet, CIFAR 等
 3. 翻译风格要简洁专业、符合中文学术表达习惯
 4. 只返回中文标题，不要包含其他解释或说明
 
@@ -514,113 +518,31 @@ class ChatGLMHelper:
             if keyword_category != "其他" and confidence >= 1.2:
                 return keyword_category
             return "其他"
-            
-            for keyword in tech_keywords:
-                if keyword in title_lower or keyword in abstract.lower():
-                    if info["core_technology"]:
-                        info["core_technology"] += ", " + keyword
-                    else:
-                        info["core_technology"] = keyword
-            
-            # 检测应用领域
-            application_keywords = {
-                "medical": "医疗健康",
-                "healthcare": "医疗健康",
-                "autonomous": "智能驾驶",
-                "driving": "智能驾驶",
-                "robot": "机器人",
-                "robotic": "机器人",
-                "ar": "元宇宙",
-                "vr": "元宇宙",
-                "metaverse": "元宇宙",
-                "industrial": "工业",
-                "manufacturing": "工业"
-            }
-            
-            for keyword, area in application_keywords.items():
-                if keyword in title_lower or keyword in abstract.lower():
-                    if info["application_area"]:
-                        if area not in info["application_area"]:
-                            info["application_area"] += ", " + area
-                    else:
-                        info["application_area"] = area
-            
-            # 提取研究方向
-            direction_keywords = {
-                "generation": "生成式视觉",
-                "generative": "生成式视觉",
-                "diffusion": "生成式视觉",
-                "nerf": "神经场景理解",
-                "gaussian": "神经场景理解",
-                "3d": "神经场景理解",
-                "multimodal": "多模态智能",
-                "vision-language": "多模态智能",
-                "foundation model": "智能视觉基础",
-                "large model": "智能视觉基础",
-                "detection": "基础视觉任务",
-                "segmentation": "基础视觉任务",
-                "tracking": "基础视觉任务",
-                "few-shot": "自适应视觉",
-                "domain adaptation": "自适应视觉",
-                "continual": "自适应视觉",
-                "embodied": "具身视觉智能",
-                "compression": "高效视觉系统",
-                "efficient": "高效视觉系统",
-                "robust": "可信视觉",
-                "fairness": "可信视觉",
-                "privacy": "可信视觉"
-            }
-            
-            for keyword, direction in direction_keywords.items():
-                if keyword in title_lower or keyword in abstract.lower():
-                    if info["research_direction"]:
-                        if direction not in info["research_direction"]:
-                            info["research_direction"] += ", " + direction
-                    else:
-                        info["research_direction"] = direction
-            
-            return info
-            
-        except Exception as e:
-            print(f"提取论文核心信息出错: {str(e)}")
-            return {
-                "research_direction": "未提取",
-                "core_technology": "未提取",
-                "main_contribution": "未提取",
-                "application_area": "未提取"
-            }
 
     def analyze_paper_contribution(self, title: str, abstract: str) -> dict:
-        """分析论文的核心贡献和解决的问题，以简洁的关键词和关键语句表达
+        """分析论文的核心贡献，以单句话总结的形式返回
     
         Args:
             title: 论文标题
             abstract: 论文摘要
     
         Returns:
-            dict: 包含分析结果的字典
+            dict: 包含分析结果的字典，只有一个键"核心贡献"，值为单句话总结
         """
-        prompt = f"""请分析以下计算机视觉论文的核心贡献，并以简洁的关键词和关键短语表达。
+        prompt = f"""请用一句话总结以下计算机视觉论文的核心贡献。
     
 论文标题：{title}
 论文摘要：{abstract}
 
-请提取以下内容，使用简短的关键词和关键短语（不要使用完整句子）：
-1. 问题：论文解决的核心问题（3-5个关键词/短语）
-2. 方法：提出的关键方法或创新点（3-5个关键词/短语）
-3. 效果：取得的主要效果（2-3个关键词/短语）
-
 格式要求：
-- 每个部分使用简短的关键词或短语，用逗号分隔
-- 不要使用完整句子
+- 必须是一句完整的话，不超过50个字
+- 包含论文解决的问题和提出的方法
+- 语言简洁明了，不要使用过于技术性的术语
 - 不要使用编号或序号
-- 不要使用解释性文字
-- 总字数控制在100字以内
+- 不要使用引号或其他标点符号包裹内容
 
 示例输出：
-问题：图像分割精度低，边界模糊，计算复杂度高
-方法：注意力机制，多尺度特征融合，轻量级编码器
-效果：精度提升15%，推理速度2倍提升，边界清晰度改善
+提出了一种基于注意力机制的轻量级图像分割方法，显著提高了边界清晰度和处理速度。
 """
         try:
             response = self.client.chat.completions.create(
@@ -631,38 +553,19 @@ class ChatGLMHelper:
                 top_p=0.7,
             )
             
-            analysis = response.choices[0].message.content.strip()
+            # 获取单句话总结
+            contribution_summary = response.choices[0].message.content.strip()
             
-            # 提取问题、方法和效果
-            problem = ""
-            method = ""
-            effect = ""
-            
-            lines = analysis.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line.startswith("问题："):
-                    problem = line[3:].strip()
-                elif line.startswith("方法："):
-                    method = line[3:].strip()
-                elif line.startswith("效果："):
-                    effect = line[3:].strip()
-            
-            # 组合成简洁的核心贡献
-            core_contribution = ""
-            if problem:
-                core_contribution += f"问题：{problem}"
-            if method:
-                if core_contribution:
-                    core_contribution += " | "
-                core_contribution += f"方法：{method}"
-            if effect:
-                if core_contribution:
-                    core_contribution += " | "
-                core_contribution += f"效果：{effect}"
-            
+            # 去除可能的多余内容，只保留第一句话
+            if '\n' in contribution_summary:
+                contribution_summary = contribution_summary.split('\n')[0].strip()
+                
+            # 确保长度适当
+            if len(contribution_summary) > 100:
+                contribution_summary = contribution_summary[:97] + '...'
+                
             return {
-                "核心贡献": core_contribution or analysis  # 如果提取失败，使用原始分析
+                "核心贡献": contribution_summary
             }
             
         except Exception as e:
@@ -754,6 +657,101 @@ class ChatGLMHelper:
         except Exception as e:
             print(f"分类确认出错: {str(e)}")
             return (initial_category, 1.5)
+
+    def decide_category(self, title: str, abstract: str, candidate_categories: List[Tuple], match_details: Dict = None) -> str:
+        """使用ChatGLM从候选类别中决定最终分类
+        
+        Args:
+            title: 论文标题
+            abstract: 论文摘要
+            candidate_categories: 候选类别列表，每个元素是(category, score, subcategory)的元组
+            match_details: 关键词匹配详情字典，可选
+            
+        Returns:
+            最终决定的类别名称
+        """
+        # 初始化匹配详情字典，如果没有提供
+        if match_details is None:
+            match_details = {}
+        try:
+            import categories_config
+            
+            # 格式化候选类别信息
+            candidates_info = ""
+            for i, (category, score, subcategory) in enumerate(candidate_categories[:3], 1):
+                subcategory_info = f", 子类别: {subcategory[0] if subcategory else '无'}" if subcategory else ""
+                candidates_info += f"\n{i}. {category} (得分: {score:.2f}{subcategory_info})"
+            
+            # 提取摘要中的关键信息
+            key_info = ""
+            if len(abstract) > 100:
+                # 提取摘要的开头和结尾，这通常包含最重要的信息
+                intro = abstract[:200] if len(abstract) > 200 else abstract
+                conclusion = abstract[-200:] if len(abstract) > 400 else ""
+                key_info = f"摘要开头: {intro}\n"
+                if conclusion:
+                    key_info += f"摘要结尾: {conclusion}\n"
+            
+            # 格式化候选类别信息，增加更多上下文
+            detailed_candidates = ""
+            for i, (category, score, subcategory) in enumerate(candidate_categories[:5], 1):
+                subcategory_info = f", 子类别: {subcategory[0] if subcategory else '无'}" if subcategory else ""
+                matches = match_details.get(category, [])[:3]
+                match_info = f", 关键匹配: {', '.join(matches)}" if matches else ""
+                detailed_candidates += f"\n{i}. {category} (得分: {score:.2f}{subcategory_info}{match_info})"
+            
+            # 构建增强的提示词，提供更多上下文和更精确的指导
+            prompt = f"""请作为一位资深的计算机视觉领域研究专家，对以下论文进行精确分类。请仔细分析论文的核心技术和创新点。
+
+论文标题: {title}
+
+{key_info}
+候选类别:{detailed_candidates}
+
+{categories_config.CATEGORY_PROMPT}
+
+分类指南:
+1. 仅从上述候选类别中选择一个最能代表论文核心创新点的类别
+2. 请基于论文的技术本质做出判断，而不是仅基于关键词匹配
+3. 如果论文主要是将现有技术应用到特定领域，而没有显著的技术创新，请选择“领域特定视觉应用”
+4. 如果论文提出了新的算法、模型或方法，请选择最能代表这一创新的技术类别
+5. 如果论文涉及多个领域，请选择最能代表其核心创新的类别
+
+请直接返回最合适的类别名称，不要有任何解释或额外文本。只返回类别名称。"""
+            
+            # 调整模型参数，提高稳定性
+            temperature = 0.01  # 极低的温度提高稳定性
+            
+            # 调用 ChatGLM 进行分类决策
+            response = self.client.chat.completions.create(
+                model="glm-4-flashx",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,  # 使用极低的温度提高稳定性
+                max_tokens=50,
+                top_p=0.3,  # 降低top_p以提高稳定性
+            )
+            
+            # 获取分类结果
+            category = response.choices[0].message.content.strip()
+            
+            # 验证返回的类别是否在候选类别中
+            candidate_names = [c[0] for c in candidate_categories]
+            
+            # 如果返回的类别在候选类别中，直接返回
+            if category in candidate_names:
+                return category
+            
+            # 如果返回的类别不在候选类别中，但在预定义类别中，也返回
+            if category in categories_config.CATEGORY_DISPLAY_ORDER:
+                return category
+            
+            # 如果都不匹配，返回得分最高的候选类别
+            return candidate_categories[0][0]
+            
+        except Exception as e:
+            print(f"ChatGLM 分类决策出错: {str(e)}")
+            # 发生错误时，返回得分最高的候选类别
+            return candidate_categories[0][0] if candidate_categories else "其他"
 
     def determine_subcategory(self, title: str, abstract: str, main_category: str) -> str:
         """确定论文的子类别
