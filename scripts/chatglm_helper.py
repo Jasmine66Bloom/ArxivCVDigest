@@ -16,26 +16,40 @@ class ChatGLMHelper:
             raise ValueError("请在config.py中设置CHATGLM_API_KEY")
         self.client = ZhipuAI(api_key=CHATGLM_API_KEY)
 
-    def translate_title(self, title: str, abstract: str) -> str:
+    def translate_title(self, title: str, abstract: str = "") -> str:
         """
-        使用ChatGLM翻译论文标题
+        使用ChatGLM翻译论文标题，增强的提示词和错误处理
         Args:
             title: 论文英文标题
-            abstract: 论文摘要，用于提供上下文
+            abstract: 论文摘要，用于提供上下文（可选）
         Returns:
             str: 中文标题
         """
         max_retries = 3
         retry_delay = 2  # 重试延迟秒数
+        
+        # 提取摘要中的关键句子作为上下文
+        context = ""
+        if abstract and len(abstract) > 50:
+            # 取摘要的前150个字符作为上下文
+            context = f"""论文摘要开头：
+{abstract[:150]}..."""
 
-        prompt = f"""将以下计算机视觉论文标题翻译成中文：
+        # 改进的提示词，更结构化和清晰
+        prompt = f"""任务：将计算机视觉领域的学术论文标题从英文翻译成中文。
+
+论文标题：
 {title}
 
-要求：
-1. 保持专业术语准确性
-2. 保留原文缩写和专有名词
-3. 翻译要简洁明了
-4. 只返回中文标题"""
+{context}
+
+翻译要求：
+1. 保持计算机视觉领域专业术语的准确性
+2. 保留原文中的模型名称、缩写和专有名词
+3. 翻译风格要简洁专业、符合中文学术表达习惯
+4. 只返回中文标题，不要包含其他解释或说明
+
+输出格式：直接返回中文标题，不要添加任何前缀或其他文字"""
 
         for attempt in range(max_retries):
             try:
@@ -500,36 +514,6 @@ class ChatGLMHelper:
             if keyword_category != "其他" and confidence >= 1.2:
                 return keyword_category
             return "其他"
-    
-    def extract_paper_core_info(self, title: str, abstract: str) -> dict:
-        """提取论文的核心信息，用于辅助分类
-        
-        Args:
-            title: 论文标题
-            abstract: 论文摘要
-            
-        Returns:
-            dict: 包含核心信息的字典
-        """
-        try:
-            # 使用简单的规则提取核心信息
-            info = {
-                "research_direction": "",
-                "core_technology": "",
-                "main_contribution": "",
-                "application_area": ""
-            }
-            
-            # 提取研究方向（通常在标题或摘要的开头）
-            title_lower = title.lower()
-            
-            # 检测核心技术关键词
-            tech_keywords = [
-                "transformer", "cnn", "gan", "diffusion", "nerf", 
-                "gaussian", "splatting", "attention", "self-supervised",
-                "contrastive", "generative", "3d", "detection", "segmentation",
-                "tracking", "reconstruction", "generation", "multimodal"
-            ]
             
             for keyword in tech_keywords:
                 if keyword in title_lower or keyword in abstract.lower():

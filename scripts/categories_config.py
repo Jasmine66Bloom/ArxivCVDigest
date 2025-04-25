@@ -25,7 +25,7 @@ CATEGORY_THRESHOLDS = {
             "语义/实例分割 (Semantic/Instance Segmentation)": 1.3,
             "关键点定位与姿态估计 (Keypoint Detection & Pose Estimation)": 1.3,
         },
-        "priority": 4.9
+        "priority": 5.1
     },
     
     # 3. 生成式视觉模型
@@ -37,7 +37,7 @@ CATEGORY_THRESHOLDS = {
             "三维内容生成 (3D Content Generation)": 1.25,
             "条件式生成与编辑 (Conditional Generation & Editing)": 1.25,
         },
-        "priority": 4.8
+        "priority": 5.0
     },
     
     # 4. 三维视觉与几何推理
@@ -49,7 +49,7 @@ CATEGORY_THRESHOLDS = {
             "单视图三维推理 (Single-view 3D Inference)": 1.3,
             "视觉定位与映射 (Visual Localization & Mapping)": 1.3,
         },
-        "priority": 4.7
+        "priority": 4.9
     },
     
     # 5. 时序视觉分析
@@ -61,7 +61,7 @@ CATEGORY_THRESHOLDS = {
             "视频目标跟踪 (Video Object Tracking)": 1.3,
             "长时序视频理解 (Long-term Video Understanding)": 1.3,
         },
-        "priority": 4.6
+        "priority": 4.8
     },
     
     # 6. 自监督与表征学习
@@ -73,7 +73,7 @@ CATEGORY_THRESHOLDS = {
             "跨模态一致性学习 (Cross-modal Consistency Learning)": 1.25,
             "表征知识迁移 (Representation Knowledge Transfer)": 1.25,
         },
-        "priority": 4.5
+        "priority": 4.7
     },
     
     # 7. 计算效率与模型优化
@@ -85,7 +85,7 @@ CATEGORY_THRESHOLDS = {
             "资源受限视觉计算 (Resource-constrained Visual Computing)": 1.3,
             "推理优化 (Inference Optimization)": 1.3,
         },
-        "priority": 4.4
+        "priority": 4.6
     },
     
     # 8. 鲁棒性与可靠性
@@ -97,7 +97,7 @@ CATEGORY_THRESHOLDS = {
             "不确定性量化 (Uncertainty Quantification)": 1.3,
             "视觉安全与隐私 (Visual Security & Privacy)": 1.3,
         },
-        "priority": 4.3
+        "priority": 4.5
     },
     
     # 9. 低资源与高效学习
@@ -109,7 +109,7 @@ CATEGORY_THRESHOLDS = {
             "半监督与弱监督 (Semi/Weakly-supervised Learning)": 1.3,
             "主动学习策略 (Active Learning Strategies)": 1.3,
         },
-        "priority": 4.2
+        "priority": 4.3
     },
     
     # 10. 具身智能与交互视觉
@@ -136,19 +136,19 @@ CATEGORY_THRESHOLDS = {
         "priority": 4.0
     },
     
-    # 12. 领域特定视觉应用
+    # 12. 领域特定视觉应用（提高优先级，降低阈值）
     "领域特定视觉应用 (Domain-specific Visual Applications)": {
-        "threshold": 1.2,
+        "threshold": 1.05,  # 大幅降低阈值，使应用类论文更容易归入此类
         "subcategories": {
-            "医学影像分析 (Medical Image Analysis)": 1.3,
-            "智能交通视觉 (Intelligent Transportation Vision)": 1.3,
-            "工业视觉检测 (Industrial Visual Inspection)": 1.3,
-            "遥感与地理信息 (Remote Sensing & Geospatial Information)": 1.3,
-            "创意媒体生成 (Creative Media Generation)": 1.3,
-            "增强/虚拟现实 (Augmented/Virtual Reality)": 1.3,
-            "生物特征识别 (Biometric Recognition)": 1.3,
+            "医学影像分析 (Medical Image Analysis)": 1.2,  # 降低子类别阈值
+            "智能交通视觉 (Intelligent Transportation Vision)": 1.2,
+            "工业视觉检测 (Industrial Visual Inspection)": 1.2,
+            "遥感与地理信息 (Remote Sensing & Geospatial Information)": 1.2,
+            "创意媒体生成 (Creative Media Generation)": 1.2,
+            "增强/虚拟现实 (Augmented/Virtual Reality)": 1.2,
+            "生物特征识别 (Biometric Recognition)": 1.2,
         },
-        "priority": 3.8
+        "priority": 5.2  # 显著提高优先级，超过大部分其他类别
     },
     
     # 13. 新兴理论与跨学科方向
@@ -397,8 +397,10 @@ CATEGORY_KEYWORDS = {
             ("visual mapping", 1.8),               # 视觉映射
         ],
         "negative_keywords": [
-            ("2D only", 1.0),                     # 仅2D
-            ("image-level", 0.8),                  # 图像级别
+            ("2D only", 1.2),                     # 仅2D（提升惩罚）
+            ("image-level", 1.0),                  # 图像级别
+            ("semantic segmentation", 0.8),       # 避免与2D分割混淆
+            ("object detection", 0.8),              # 避免与2D检测混淆
         ]
     },
     
@@ -426,8 +428,10 @@ CATEGORY_KEYWORDS = {
             ("video captioning", 1.8),               # 视频描述
         ],
         "negative_keywords": [
-            ("static image", 1.0),                   # 静态图像
-            ("single frame", 0.8),                   # 单帧
+            ("static image", 1.2),                   # 静态图像（提升惩罚）
+            ("single frame", 1.0),                  # 单帧
+            ("semantic segmentation", 0.8),         # 避免与2D分割混淆
+            ("image classification", 0.8),           # 避免与2D分类混淆
         ]
     },
     
@@ -453,8 +457,10 @@ CATEGORY_KEYWORDS = {
             ("knowledge transfer", 2.0),            # 知识迁移
         ],
         "negative_keywords": [
-            ("supervised", 1.0),                   # 监督式
-            ("labeled data", 0.8),                 # 标注数据
+            ("fully supervised", 1.2),              # 全监督（提升惩罚）
+            ("labeled data", 1.0),                  # 标注数据
+            ("classification", 0.8),                # 避免与纯分类混淆
+            ("object detection", 0.8),              # 避免与检测混淆
         ]
     },
     

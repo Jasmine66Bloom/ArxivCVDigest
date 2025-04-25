@@ -1,15 +1,24 @@
 """获取CV论文"""
 import os
 import re
-import json
-import time
+import math
 import traceback
-import requests
-import pandas as pd
 from datetime import datetime, timedelta
-from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
+
+from collections import defaultdict
+from categories_config import CATEGORY_DISPLAY_ORDER, CATEGORY_THRESHOLDS
+from chatglm_helper import ChatGLMHelper
+from typing import Dict, List, Tuple, Optional
+import traceback
+import arxiv
+
+# 查询参数设置
+QUERY_DAYS_AGO = 2          # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 300           # 最大返回论文数量
+MAX_WORKERS = 8            # 并行处理的最大线程数
+
 
 # 导入NLTK库用于文本预处理
 try:
@@ -65,20 +74,6 @@ try:
 except ImportError:
     print("NLTK库未安装，将使用基本文本处理")
     NLTK_AVAILABLE = False
-
-from collections import defaultdict
-import categories_config
-from categories_config import CATEGORY_DISPLAY_ORDER, CATEGORY_THRESHOLDS
-from chatglm_helper import ChatGLMHelper
-from typing import Dict, List, Tuple, Optional
-import traceback
-import arxiv
-
-# 查询参数设置
-QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 300           # 最大返回论文数量
-MAX_WORKERS = 8            # 并行处理的最大线程数
-
 
 def extract_github_link(text, paper_url=None, title=None, authors=None, pdf_url=None):
     """从文本中提取GitHub链接
@@ -371,9 +366,9 @@ def preprocess_text(text: str) -> str:
         return basic_processed
 
 
-def get_category_by_keywords(title: str, abstract: str, categories_config: Dict) -> List[Tuple[str, float, Optional[Tuple[str, float]]]]:
+def get_category_by_keywords(title: str, abstract: str, categories_config: Dict) -> List[Tuple[str, float, Optional[Tuple[str, float]], Optional[Dict]]]:
     """
-    执行基于关键词匹配和优先级规则的层次化论文分类。
+    执行基于关键词匹配和优先级规则的层次化论文分类，带有增强的文本处理和置信度评分。
     
     Args:
         title (str): 论文标题，用于主要上下文分析
@@ -381,26 +376,31 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
         categories_config (Dict): 包含类别定义、关键词、权重和优先级的配置字典
     
     实现细节:
-        1. 文本预处理:
-           - 大小写标准化，确保匹配稳健性
+        1. 增强文本预处理:
+           - 大小写标准化和标准化处理
            - 标题和摘要的组合分析，使用差异化权重
-           - 分词和停用词过滤，提高匹配质量
-           - 词干提取和词形还原，提高匹配准确性
+           - 高级分词和停用词过滤
+           - 多级词干提取和词形还原
+           - N-gram分析，提高短语匹配准确性
         
-        2. 评分机制:
-           - 主要得分: 加权关键词匹配 (基础权重 0.15)
-           - 标题加成: 标题匹配的额外权重 (0.08 权重)
+        2. 优化评分机制:
+           - 主要得分: 加权关键词匹配 (动态基础权重)
+           - 标题加成: 标题匹配的额外权重 (优化加权)
            - 精确匹配加成: 完整短语匹配的额外权重
            - 优先级乘数: 类别特定重要性缩放
-           - 负面关键词惩罚: 使用逻辑函数平滑惩罚
+           - 负面关键词惩罚: 使用改进的逻辑函数平滑惩罚
+           - 类别相关性判断: 考虑类别间的相关性
         
-        3. 分类逻辑:
-           - 使用类别自定义阈值
-           - 支持子类别分类
+        3. 智能分类逻辑:
+           - 使用类别自定义阈值与动态阈值调整
+           - 增强的子类别分类
            - 优先类别的层次化处理
+           - 智能回退机制，考虑类别相关性
+           - 置信度评分和分类解释
     
     Returns:
-        List[Tuple[str, float, Optional[Tuple[str, float]]]]: 按置信度降序排序的 (类别, 置信度分数, 子类别信息) 元组列表
+        List[Tuple[str, float, Optional[Tuple[str, float]], Optional[Dict]]]: 按置信度降序排序的 
+        (类别, 置信度分数, 子类别信息, 分类解释) 元组列表
     """
     # 文本预处理
     title_lower = title.lower()
@@ -545,11 +545,43 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
             # 使用更平滑的惩罚函数
             if negative_score > 0:
                 original_score = score
-                # 使用逻辑函数进行惩罚，避免过度惩罚
-                penalty_factor = 1 / (1 + negative_score * 0.8)
+                # 上下文感知的负向关键词处理
+                # 检查负向关键词的上下文，判断是否存在否定词或对立词
+                context_adjustment = 1.0
+                
+                # 检查否定词和对立词
+                negation_words = ["not", "without", "no", "non", "instead of", "rather than", "unlike"]
+                opposition_words = ["but", "however", "although", "despite", "contrary to"]
+                
+                # 如果存在否定词或对立词，减少惩罚
+                for neg_word in negation_words:
+                    if neg_word + " " + keyword_lower in combined_text or neg_word + "-" + keyword_lower in combined_text:
+                        context_adjustment = 0.5  # 大幅减少惩罚
+                        matches.append(f"检测到否定上下文: '{neg_word} {keyword_lower}', 惩罚减少")
+                        break
+                
+                for opp_word in opposition_words:
+                    if opp_word in combined_text and combined_text.find(opp_word) < combined_text.find(keyword_lower):
+                        # 如果对立词在关键词之前，减少惩罚
+                        context_adjustment = 0.7
+                        matches.append(f"检测到对立上下文: '{opp_word}... {keyword_lower}', 惩罚部分减少")
+                        break
+                
+                # 应用上下文调整
+                negative_score *= context_adjustment
+                
+                # 使用改进的惩罚函数
+                # 对于较小的负向分数使用线性惩罚，对于较大的负向分数使用指数惩罚
+                if negative_score < 0.5:
+                    # 轻微负向分数使用线性惩罚
+                    penalty_factor = 1 - negative_score * 0.3
+                else:
+                    # 较大负向分数使用指数惩罚
+                    penalty_factor = math.exp(-negative_score * 0.8)
+                
                 score *= penalty_factor
                 penalty = original_score - score
-                matches.append(f"负向惩罚总计: -{penalty:.2f} (因子: {penalty_factor:.2f})")
+                matches.append(f"负向惩罚总计: -{penalty:.2f} (因子: {penalty_factor:.2f}, 上下文调整: {context_adjustment:.1f})")
         
         # 3. 应用类别优先级缩放
         priority = config.get("priority", 0)
@@ -596,8 +628,31 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
         if category in scores and category in CATEGORY_THRESHOLDS:
             category_score = scores[category]
             threshold = CATEGORY_THRESHOLDS[category]["threshold"]
-            # 大幅降低阈值并降低最低分数要求
-            if category_score >= threshold * 0.25 and category_score >= 0.08:  # 从0.3降低到0.25，从0.1降低到0.08
+            # 动态阈值调整：根据文本长度和复杂度调整阈值
+            # 计算文本复杂度因子
+            text_length = len(title) + len(abstract)
+            complexity_factor = 1.0
+            
+            # 较短文本需要更高的阈值（因为关键词密度更高）
+            if text_length < 500:
+                complexity_factor = 1.2
+            elif text_length > 2000:
+                complexity_factor = 0.9  # 较长文本需要更宽松的阈值
+            
+            # 计算关键词密度（匹配的关键词数量除以文本长度）
+            keyword_density = len(match_details.get(category, [])) / (text_length / 100) if text_length > 0 else 0
+            density_factor = 1.0
+            
+            if keyword_density > 1.5:  # 关键词密度高
+                density_factor = 0.9  # 降低阈值要求
+            elif keyword_density < 0.5:  # 关键词密度低
+                density_factor = 1.1  # 提高阈值要求
+            
+            # 计算动态阈值系数
+            dynamic_threshold_factor = 0.35 * complexity_factor * density_factor
+            
+            # 应用动态阈值
+            if category_score >= threshold * dynamic_threshold_factor and category_score >= 0.10:
                 # 尝试获取子类别
                 subcategory = get_subcategory(title, abstract, category, category_score)
                 # 优先返回有子类别的结果
@@ -660,25 +715,142 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
                     result_with_subcategories.append((best_category, best_score, None))
                     break
         
-        # 如果仍然没有分类结果，使用得分最高的类别，即使得分很低
+        # 智能回退机制：考虑类别相关性和组合评分
         if not result_with_subcategories and all_categories:
-            # 只要有任何得分，就使用得分最高的类别
+            # 1. 尝试找出相关类别组合
+            # 如果前两个类别得分接近且都较高，可能表明论文跨类别
+            if len(all_categories) >= 2:
+                top_category, top_score = all_categories[0]
+                second_category, second_score = all_categories[1]
+                
+                # 如果前两个类别得分接近（第二个至少是第一个的80%）
+                if second_score >= top_score * 0.8 and second_score > 0.05:
+                    # 检查这两个类别是否相关（通过关键词重叠判断）
+                    category_relation = calculate_category_relation(top_category, second_category, categories_config)
+                    
+                    # 如果类别相关，可以考虑使用组合评分
+                    if category_relation > 0.3:  # 相关性阈值
+                        # 使用组合得分提升置信度
+                        combined_score = (top_score + second_score * 0.5) * (1 + category_relation * 0.2)
+                        if combined_score > 0.08:  # 组合得分阈值
+                            subcategory = get_subcategory(title, abstract, top_category, combined_score)
+                            result_with_subcategories.append((top_category, combined_score, subcategory))
+                            # 添加分类解释
+                            match_details[top_category].append(f"相关类别加成 [{second_category}]: +{second_score * 0.5 * (1 + category_relation * 0.2):.2f}")
+                            return result_with_subcategories
+            
+            # 2. 常规回退：使用得分最高的类别
             best_category, best_score = all_categories[0]
-            if best_score > 0.03:  # 设置一个非常低的阈值，从0.05降低到0.03
+            
+            # 根据得分级别使用不同策略
+            if best_score > 0.08:  # 较高置信度
                 subcategory = get_subcategory(title, abstract, best_category, best_score)
                 result_with_subcategories.append((best_category, best_score, subcategory))
-            # 如果得分完全低于0.03，但仍然有一些匹配，使用得分最高的类别
-            elif best_score > 0.01:
+            elif best_score > 0.04:  # 中等置信度
+                # 尝试获取子类别
+                subcategory = get_subcategory(title, abstract, best_category, best_score)
+                # 添加置信度不高的说明
+                match_details[best_category].append("置信度中等，可能需要人工复核")
+                result_with_subcategories.append((best_category, best_score, subcategory))
+            elif best_score > 0.01:  # 低置信度但仍有一些匹配
                 # 尝试获取子类别，但不期望有结果
                 subcategory = get_subcategory(title, abstract, best_category, best_score)
+                # 添加置信度低的说明
+                match_details[best_category].append("置信度低，建议人工分类")
                 result_with_subcategories.append((best_category, best_score, subcategory))
     
     # 如果仍然没有结果，返回空列表
     if not result_with_subcategories:
         return []
+    
+    # 增强的结果处理：添加置信度评分和分类解释
+    enhanced_results = []
+    for cat, score, subcat in result_with_subcategories:
+        # 计算置信度级别
+        if score >= 1.5:
+            confidence = "很高"
+        elif score >= 1.0:
+            confidence = "高"
+        elif score >= 0.7:
+            confidence = "中等"
+        elif score >= 0.4:
+            confidence = "低"
+        else:
+            confidence = "很低"
         
-    # 返回包含子类别的结果
-    return result_with_subcategories
+        # 获取匹配详情
+        match_info = match_details.get(cat, [])
+        
+        # 创建分类解释
+        explanation = {
+            "confidence_level": confidence,
+            "score": round(score, 4),
+            "key_matches": match_info[:5] if match_info else [],  # 最多显示5个关键匹配
+            "threshold": CATEGORY_THRESHOLDS.get(cat, {}).get("threshold", "未定义") if cat in CATEGORY_THRESHOLDS else "未定义",
+            "match_count": len(match_info)
+        }
+        
+        # 添加到增强结果中
+        enhanced_results.append((cat, round(score, 4), subcat, explanation))
+    
+    return enhanced_results
+
+
+def calculate_category_relation(category1, category2, categories_config):
+    """
+    计算两个类别之间的相关性
+    
+    Args:
+        category1: 第一个类别名称
+        category2: 第二个类别名称
+        categories_config: 类别配置字典
+        
+    Returns:
+        float: 相关性分数 (0-1)，越高表示越相关
+    """
+    # 如果类别相同，相关性为1
+    if category1 == category2:
+        return 1.0
+    
+    # 获取两个类别的关键词
+    keywords1 = set()
+    keywords2 = set()
+    
+    if category1 in categories_config and "keywords" in categories_config[category1]:
+        keywords1 = {kw[0].lower() for kw in categories_config[category1]["keywords"] if isinstance(kw, tuple)}
+    
+    if category2 in categories_config and "keywords" in categories_config[category2]:
+        keywords2 = {kw[0].lower() for kw in categories_config[category2]["keywords"] if isinstance(kw, tuple)}
+    
+    # 如果任一类别没有关键词，返回0
+    if not keywords1 or not keywords2:
+        return 0.0
+    
+    # 计算关键词重叠
+    overlap = keywords1.intersection(keywords2)
+    
+    # 使用Jaccard相似度计算相关性
+    similarity = len(overlap) / len(keywords1.union(keywords2))
+    
+    # 预定义的相关类别对
+    related_pairs = [
+        ("视觉表征与基础模型", "自监督与表征学习"),
+        ("视觉识别与理解", "三维视觉与几何推理"),
+        ("生成式视觉模型", "视觉-语言协同理解"),
+        ("时序视觉分析", "具身智能与交互视觉"),
+        ("计算效率与模型优化", "鲁棒性与可靠性"),
+        ("低资源与高效学习", "计算效率与模型优化")
+    ]
+    
+    # 检查是否为预定义的相关类别对
+    for pair in related_pairs:
+        if (category1.startswith(pair[0]) and category2.startswith(pair[1])) or \
+           (category1.startswith(pair[1]) and category2.startswith(pair[0])):
+            # 增加相关性分数
+            similarity += 0.2
+            break
+    
+    return min(similarity, 1.0)  # 确保不超过1
 
 
 def process_paper(paper, glm_helper, target_date):
@@ -747,15 +919,39 @@ def get_subcategory(title: str, abstract: str, main_category: str, main_score: f
     Returns:
         Optional[Tuple[str, float]]: 子类别及其得分，如果无法确定则返回None
     """
-    # 文本预处理
+    # 增强的文本预处理
     title_lower = title.lower()
     abstract_lower = abstract.lower()
     combined_text = title_lower + " " + abstract_lower
     
-    # 使用高级文本预处理
+    # 使用NLTK进行多级文本预处理
     processed_title = preprocess_text(title)
     processed_abstract = preprocess_text(abstract)
     processed_combined = processed_title + " " + processed_abstract
+    
+    # 创建N-gram版本的文本用于短语匹配
+    # 这有助于捕获多词短语，即使它们的顺序或形式略有不同
+    from nltk.util import ngrams
+    import re
+    
+    # 清理并标准化文本用于N-gram处理
+    clean_title = re.sub(r'[^\w\s]', ' ', title_lower)
+    clean_abstract = re.sub(r'[^\w\s]', ' ', abstract_lower)
+    
+    # 生成2-gram和3-gram
+    title_words = clean_title.split()
+    abstract_words = clean_abstract.split()
+    
+    # 生成2-gram
+    title_bigrams = [' '.join(ng) for ng in ngrams(title_words, 2)] if len(title_words) >= 2 else []
+    abstract_bigrams = [' '.join(ng) for ng in ngrams(abstract_words, 2)] if len(abstract_words) >= 2 else []
+    
+    # 生成3-gram
+    title_trigrams = [' '.join(ng) for ng in ngrams(title_words, 3)] if len(title_words) >= 3 else []
+    abstract_trigrams = [' '.join(ng) for ng in ngrams(abstract_words, 3)] if len(abstract_words) >= 3 else []
+    
+    # 合并所有N-gram
+    all_ngrams = set(title_bigrams + abstract_bigrams + title_trigrams + abstract_trigrams)
     
     # 检查主类别是否有子类别定义
     if main_category in CATEGORY_THRESHOLDS and "subcategories" in CATEGORY_THRESHOLDS[main_category]:
@@ -781,21 +977,38 @@ def get_subcategory(title: str, abstract: str, main_category: str, main_score: f
             elif processed_subcategory in processed_title:
                 score += 3.0  # 如果预处理后的子类别名称出现在标题中
             
-            # 关键词匹配（更细致的匹配逻辑）
+            # 增强的关键词匹配（语义相似度和上下文感知）
             for keyword in subcategory_keywords:
                 if len(keyword) > 3:  # 忽略过短的词
                     # 原始文本匹配
                     if keyword in title_lower:
-                        score += 1.5  # 增加标题匹配的权重，从1.0提高到1.5
+                        score += 1.5  # 标题中的精确匹配
                     elif keyword in abstract_lower:
-                        score += 0.8  # 从0.5提高到0.8
+                        score += 0.8  # 摘要中的精确匹配
                     
                     # 预处理文本匹配
                     processed_keyword = preprocess_text(keyword)
                     if processed_keyword in processed_title:
-                        score += 1.2  # 从0.8提高到1.2
+                        score += 1.2  # 预处理后的标题匹配
                     elif processed_keyword in processed_abstract:
-                        score += 0.6  # 从0.4提高到0.6
+                        score += 0.6  # 预处理后的摘要匹配
+                    
+                    # N-gram匹配（捕获短语变体）
+                    for ngram in all_ngrams:
+                        if keyword in ngram:
+                            score += 0.4  # N-gram中的关键词匹配
+                            break
+                    
+                    # 词根匹配（处理词形变化）
+                    keyword_root = preprocess_text(keyword)
+                    for word in processed_title.split():
+                        if keyword_root in word and len(keyword_root) > 4:  # 确保足够长以避免误匹配
+                            score += 0.3
+                            break
+                    for word in processed_abstract.split():
+                        if keyword_root in word and len(keyword_root) > 4:
+                            score += 0.2
+                            break
             
             # 大幅降低子类别阈值，确保大多数论文能被分配到子类别
             if score > 0:
@@ -810,6 +1023,63 @@ def get_subcategory(title: str, abstract: str, main_category: str, main_score: f
             return best_subcategory
     
     return None
+
+
+def calculate_category_relation(category1, category2, categories_config):
+    """
+    计算两个类别之间的相关性
+    
+    Args:
+        category1: 第一个类别名称
+        category2: 第二个类别名称
+        categories_config: 类别配置字典
+        
+    Returns:
+        float: 相关性分数 (0-1)，越高表示越相关
+    """
+    # 如果类别相同，相关性为1
+    if category1 == category2:
+        return 1.0
+    
+    # 获取两个类别的关键词
+    keywords1 = set()
+    keywords2 = set()
+    
+    if category1 in categories_config and "keywords" in categories_config[category1]:
+        keywords1 = {kw[0].lower() for kw in categories_config[category1]["keywords"] if isinstance(kw, tuple)}
+    
+    if category2 in categories_config and "keywords" in categories_config[category2]:
+        keywords2 = {kw[0].lower() for kw in categories_config[category2]["keywords"] if isinstance(kw, tuple)}
+    
+    # 如果任一类别没有关键词，返回0
+    if not keywords1 or not keywords2:
+        return 0.0
+    
+    # 计算关键词重叠
+    overlap = keywords1.intersection(keywords2)
+    
+    # 使用Jaccard相似度计算相关性
+    similarity = len(overlap) / len(keywords1.union(keywords2))
+    
+    # 预定义的相关类别对
+    related_pairs = [
+        ("视觉表征与基础模型", "自监督与表征学习"),
+        ("视觉识别与理解", "三维视觉与几何推理"),
+        ("生成式视觉模型", "视觉-语言协同理解"),
+        ("时序视觉分析", "具身智能与交互视觉"),
+        ("计算效率与模型优化", "鲁棒性与可靠性"),
+        ("低资源与高效学习", "计算效率与模型优化")
+    ]
+    
+    # 检查是否为预定义的相关类别对
+    for pair in related_pairs:
+        if (category1.startswith(pair[0]) and category2.startswith(pair[1])) or \
+           (category1.startswith(pair[1]) and category2.startswith(pair[0])):
+            # 增加相关性分数
+            similarity += 0.2
+            break
+    
+    return min(similarity, 1.0)  # 确保不超过1
 
 
 def process_paper(paper, glm_helper, target_date):
@@ -879,12 +1149,16 @@ def process_paper(paper, glm_helper, target_date):
                 # 获取主类别和得分
                 result_item = category_results[0]
                 
-                # 兼容两种返回格式：(category, score) 或 (category, score, subcategory)
-                if len(result_item) == 3:
+                # 兼容多种返回格式：(category, score) 或 (category, score, subcategory) 或 (category, score, subcategory, explanation)
+                if len(result_item) >= 4:  # 新格式，包含解释
+                    main_category, main_score, sub_category_tuple, explanation = result_item
+                elif len(result_item) == 3:  # 旧格式，包含子类别
                     main_category, main_score, sub_category_tuple = result_item
-                else:
+                    explanation = None
+                else:  # 最简单的格式
                     main_category, main_score = result_item
                     sub_category_tuple = None
+                    explanation = None
                     
                 category = main_category
                 
