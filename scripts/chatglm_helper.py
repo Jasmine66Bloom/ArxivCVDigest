@@ -58,7 +58,7 @@ class ChatGLMHelper:
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="glm-4-flashx",
+                    model="glm-4-air",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1,
                     max_tokens=100,
@@ -260,7 +260,7 @@ class ChatGLMHelper:
 
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",  # 使用功能更强的模型
+                model="glm-4-air",  # 使用功能更强的模型
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=1000,
@@ -430,7 +430,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行分类
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",  # 修改为 flashx 版本
+                model="glm-4-air",  # 修改为 flashx 版本
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.05,
                 max_tokens=50,
@@ -467,7 +467,7 @@ class ChatGLMHelper:
                     
                     # 使用更强大的模型进行确认
                     response = self.client.chat.completions.create(
-                        model="glm-4-flashx",  # 使用更强大的模型
+                        model="glm-4-air",  # 使用更强大的模型
                         messages=[{"role": "user", "content": confirm_prompt}],
                         temperature=0.05,
                         max_tokens=50,
@@ -546,7 +546,7 @@ class ChatGLMHelper:
 """
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",
+                model="glm-4-air",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=200,
@@ -591,7 +591,7 @@ class ChatGLMHelper:
 
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",
+                model="glm-4-air",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=200,
@@ -624,7 +624,7 @@ class ChatGLMHelper:
 
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",
+                model="glm-4-air",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=100,
@@ -724,7 +724,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行分类决策
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",
+                model="glm-4-air",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,  # 使用极低的温度提高稳定性
                 max_tokens=50,
@@ -808,7 +808,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行子类别分类
             response = self.client.chat.completions.create(
-                model="glm-4-flashx",  # 修改为 flashx 版本
+                model="glm-4-air",  # 修改为 flashx 版本
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.05,
                 max_tokens=50,
@@ -880,7 +880,7 @@ class ChatGLMHelper:
             
             try:
                 response = self.client.chat.completions.create(
-                    model="glm-4-flashx",  # 修改为 flashx 版本
+                    model="glm-4-air",  # 修改为 flashx 版本
                     messages=[{"role": "user", "content": simple_prompt}],
                     temperature=0.1,
                     max_tokens=50,
