@@ -1,4 +1,14 @@
-"""获取CV论文"""
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+CV论文获取与分类程序
+
+从 arXiv 获取最新CV论文并使用ChatGLM模型进行分类。
+
+作者: Jasmine Bloom
+日期: 2025-06
+"""
+
 import os
 import re
 import math
@@ -8,17 +18,55 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 from collections import defaultdict
-from categories_config import CATEGORY_DISPLAY_ORDER, CATEGORY_THRESHOLDS
+from categories_config import CATEGORY_DISPLAY_ORDER, CATEGORY_THRESHOLDS, CATEGORY_KEYWORDS
 from chatglm_helper import ChatGLMHelper
 from typing import Dict, List, Tuple, Optional
 import traceback
 import arxiv
+import random
 
-# 查询参数设置
-QUERY_DAYS_AGO = 3          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 300           # 最大返回论文数量
-MAX_WORKERS = 8            # 并行处理的最大线程数
+from chatglm_helper import ChatGLMHelper
+chatglm = ChatGLMHelper()
 
+# 使用logger_config模块配置日志记录器
+from logger_config import setup_logger
+# 使用简化格式，不显示时间、级别和日志名
+logger = setup_logger(name='cv_papers', level='info', simple_format=True)
+
+# 查询参数
+QUERY_DAYS_AGO = 3          # 目标日期偏移量
+MAX_RESULTS = 300           # 最大论文数
+MAX_WORKERS = 8            # 并行线程数
+
+def get_related_category_pairs():
+    """
+    根据最新的类别定义生成相关类别对
+    这些对在计算类别相似度时使用
+    
+    Returns:
+        List[Tuple[str, str]]: 相关类别对列表
+    """
+    # 使用基础研究类别（CATEGORY_DISPLAY_ORDER的前10个）
+    basic_research_categories = CATEGORY_DISPLAY_ORDER[:10]
+    
+    # 创建相关类别对
+    # 将每个类别名称的中文部分提取出来（去除英文部分）
+    related_pairs = [
+        # 视觉表征学习与大模型 和 静态图像理解与语义解析
+        (basic_research_categories[0].split(' (')[0], basic_research_categories[1].split(' (')[0]),
+        # 静态图像理解与语义解析 和 三维重建与几何感知
+        (basic_research_categories[1].split(' (')[0], basic_research_categories[3].split(' (')[0]),
+        # 生成式视觉与内容创建 和 多模态视觉与跨模态学习
+        (basic_research_categories[2].split(' (')[0], basic_research_categories[5].split(' (')[0]),
+        # 动态视觉与时序建模 和 感知-动作智能与主动视觉
+        (basic_research_categories[4].split(' (')[0], basic_research_categories[8].split(' (')[0]),
+        # 模型优化与系统鲁棒性 和 效率学习与适应性智能
+        (basic_research_categories[6].split(' (')[0], basic_research_categories[7].split(' (')[0]),
+        # 效率学习与适应性智能 和 前沿视觉理论与跨学科融合
+        (basic_research_categories[7].split(' (')[0], basic_research_categories[9].split(' (')[0])
+    ]
+    
+    return related_pairs
 
 # 导入NLTK库用于文本预处理
 try:
@@ -27,52 +75,56 @@ try:
     from nltk.tokenize import word_tokenize
     from nltk.corpus import stopwords
     
-    # 创建标志文件路径
+    # 创建标志文件路径，用于记录NLTK数据是否已下载
     nltk_flag_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.nltk_data_downloaded')
     
     # 检查是否已经下载过NLTK数据
     if os.path.exists(nltk_flag_file):
         # 已经下载过，直接使用
+        logger.debug("NLTK数据已下载过，使用现有数据")
         NLTK_AVAILABLE = True
     else:
+        logger.info("首次运行，检查NLTK数据是否已下载")
         # 检查必要的NLTK数据是否已下载
         needed_data = []
         for data_name in ['punkt', 'wordnet', 'stopwords']:
             try:
                 path = f"{'tokenizers/' if data_name == 'punkt' else 'corpora/'}{data_name}"
                 nltk.data.find(path)
-                print(f"NLTK数据 '{data_name}' 已存在于: {path}")
+                logger.debug(f"NLTK数据 '{data_name}' 已存在于: {path}")
             except LookupError:
                 needed_data.append(data_name)
-                print(f"NLTK数据 '{data_name}' 不存在，需要下载")
+                logger.info(f"NLTK数据 '{data_name}' 不存在，将下载")
         
-        # 只下载缺失的数据
+        # 只下载缺失的数据，避免重复下载
         if needed_data:
-            print(f"正在下载缺失的NLTK数据文件: {', '.join(needed_data)}")
+            logger.info(f"正在下载缺失的NLTK数据文件: {', '.join(needed_data)}")
             for data_name in needed_data:
-                print(f"开始下载 '{data_name}'...")
+                logger.info(f"开始下载 '{data_name}'...")
                 download_result = nltk.download(data_name, quiet=False)
-                print(f"下载 '{data_name}' 结果: {download_result}")
-            print("NLTK数据文件下载完成")
+                logger.info(f"下载 '{data_name}' 结果: {download_result}")
+            logger.info("NLTK数据文件下载完成")
         
-        # 特别处理punkt_tab
+        # 特别处理punkt_tab（某些NLTK功能需要此数据）
         try:
             nltk.data.find('tokenizers/punkt_tab')
-            print("NLTK数据 'punkt_tab' 已存在")
+            logger.debug("NLTK数据 'punkt_tab' 已存在")
         except LookupError:
-            print("开始下载 'punkt_tab'...")
-            download_result = nltk.download('punkt', quiet=False)  # 重新下载 punkt可能会包含punkt_tab
-            print(f"下载 'punkt' 结果: {download_result}")
+            logger.info("开始下载 'punkt_tab'...")
+            # 重新下载punkt可能会包含punkt_tab
+            download_result = nltk.download('punkt', quiet=False)
+            logger.info(f"下载 'punkt' 结果: {download_result}")
         
-        # 创建标志文件表示数据已下载
+        # 创建标志文件表示数据已下载，避免下次重复下载
         with open(nltk_flag_file, 'w') as f:
             f.write(f"NLTK data downloaded at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
+        logger.info("NLTK初始化完成")
         NLTK_AVAILABLE = True
     
     NLTK_AVAILABLE = True
 except ImportError:
-    print("NLTK库未安装，将使用基本文本处理")
+    logger.warning("NLTK库未安装，将使用基本文本处理方法")
     NLTK_AVAILABLE = False
 
 def extract_github_link(text, paper_url=None, title=None, authors=None, pdf_url=None):
@@ -361,7 +413,7 @@ def preprocess_text(text: str) -> str:
             return " ".join(tokens)
     
     except Exception as e:
-        print(f"NLTK处理文本时出错: {str(e)}")
+        logger.error(f"NLTK处理文本时出错: {str(e)}")
         # 如果所有NLTK处理都失败，回退到基本处理
         return basic_processed
 
@@ -376,22 +428,22 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
         categories_config (Dict): 包含类别定义、关键词、权重和优先级的配置字典
     
     实现细节:
-        1. 增强文本预处理:
+        1. 增强文本预处理：
            - 大小写标准化和标准化处理
            - 标题和摘要的组合分析，使用差异化权重
            - 高级分词和停用词过滤
            - 多级词干提取和词形还原
            - N-gram分析，提高短语匹配准确性
         
-        2. 优化评分机制:
-           - 主要得分: 加权关键词匹配 (动态基础权重)
-           - 标题加成: 标题匹配的额外权重 (优化加权)
-           - 精确匹配加成: 完整短语匹配的额外权重
-           - 优先级乘数: 类别特定重要性缩放
-           - 负面关键词惩罚: 使用改进的逻辑函数平滑惩罚
-           - 类别相关性判断: 考虑类别间的相关性
+        2. 优化评分机制：
+           - 主要得分：加权关键词匹配（动态基础权重）
+           - 标题加成：标题匹配的额外权重（优化加权）
+           - 精确匹配加成：完整短语匹配的额外权重
+           - 优先级乘数：类别特定重要性缩放
+           - 负面关键词惩罚：使用改进的逻辑函数平滑惩罚
+           - 类别相关性判断：考虑类别间的相关性
         
-        3. 智能分类逻辑:
+        3. 智能分类逻辑：
            - 使用类别自定义阈值与动态阈值调整
            - 增强的子类别分类
            - 优先类别的层次化处理
@@ -598,203 +650,222 @@ def get_category_by_keywords(title: str, abstract: str, categories_config: Dict)
     # 4. 分类决策逻辑
     # 验证最低置信度阈值
     max_score = max(scores.values()) if scores else 0
-    if max_score < 0.05:  # 进一步降低最低置信度要求，从0.08降低到0.05
+    if max_score < 0.05:
         return []
     
-    # 使用类别自定义阈值进行分类
-    from categories_config import CATEGORY_THRESHOLDS
+    # 第一步：检测强信号关键词，直接分类某些明确的论文
+    combined_text = (title + " " + abstract).lower()
     
-    # 处理高优先级类别（包含所有主要类别）
-    high_priority_categories = [
-        "视觉表征与基础模型 (Visual Representation & Foundation Models)",
-        "生成式视觉模型 (Generative Visual Modeling)",
-        "视觉-语言协同理解 (Vision-Language Joint Understanding)",
-        "视觉识别与理解 (Visual Recognition & Understanding)",
-        "领域特定视觉应用 (Domain-specific Visual Applications)",
-        "三维视觉与几何推理 (3D Vision & Geometric Reasoning)",
-        "时序视觉分析 (Temporal Visual Analysis)",
-        "自监督与表征学习 (Self-supervised & Representation Learning)",
-        "计算效率与模型优化 (Computational Efficiency & Model Optimization)",
-        "鲁棒性与可靠性 (Robustness & Reliability)",
-        "低资源与高效学习 (Low-resource & Efficient Learning)",
-        "具身智能与交互视觉 (Embodied Intelligence & Interactive Vision)",
-        "新兴理论与跨学科方向 (Emerging Theory & Interdisciplinary Directions)"
+    # 强信号关键词检测 - 优先考虑用户指定的基础研究类别
+    strong_signals = {
+        "生成式视觉与内容创建 (Generative Vision & Content Creation)": [
+            "diffusion", "generative", "gan", "vae", "synthesis", "text-to-image", "image generation", 
+            "stable diffusion", "latent diffusion", "text to image", "image to image", "style transfer",
+            "扩散模型", "生成模型", "图像生成", "文本到图像", "图像到图像", "风格迁移"
+        ],
+        "三维重建与几何感知 (3D Reconstruction & Geometric Perception)": [
+            "3d reconstruction", "point cloud", "depth estimation", "nerf", "3d vision", "geometry", "3d shape", 
+            "novel view synthesis", "multi-view", "stereo matching", "structure from motion", "sfm", "slam",
+            "三维重建", "点云", "深度估计", "三维视觉", "几何", "新视角合成", "多视角", "立体匹配", "运动结构"
+        ],
+        "动态视觉与时序建模 (Dynamic Vision & Temporal Modeling)": [
+            "video", "temporal", "motion", "tracking", "optical flow", "action recognition", "trajectory", 
+            "sequence", "dynamic", "temporal consistency", "video generation", "video prediction",
+            "视频", "时序", "运动", "跟踪", "光流", "动作识别", "轨迹", "序列", "动态", "时间一致性"
+        ],
+        "多模态视觉与跨模态学习 (Multimodal Vision & Cross-modal Learning)": [
+            "multimodal", "cross-modal", "vision-language", "text-vision", "audio-visual", "multi-modal", 
+            "vision and language", "clip", "align", "多模态", "跨模态", "视觉语言", "文本视觉", "音视频", "视觉与语言"
+        ],
+        "模型优化与系统鲁棒性 (Model Optimization & System Robustness)": [
+            "adversarial", "robustness", "optimization", "quantization", "pruning", "compression", "distillation", 
+            "knowledge distillation", "model compression", "efficient inference", "low-rank", "sparsity",
+            "对抗", "鲁棒性", "优化", "量化", "剪枝", "压缩", "蒸馏", "知识蒸馏", "模型压缩", "高效推理", "低秩", "稀疏性"
+        ],
+        "效率学习与适应性智能 (Efficient Learning & Adaptive Intelligence)": [
+            "few-shot", "zero-shot", "meta-learning", "transfer learning", "domain adaptation", "continual learning", 
+            "lifelong learning", "incremental learning", "curriculum learning", "active learning", "self-supervised",
+            "少样本", "零样本", "元学习", "迁移学习", "域适应", "持续学习", "终身学习", "增量学习", "课程学习", "主动学习", "自监督"
+        ],
+        "静态图像理解与语义解析 (Static Image Understanding & Semantic Analysis)": [
+            "object detection", "semantic segmentation", "instance segmentation", "scene understanding",
+            "visual reasoning", "object recognition", "image classification", "scene parsing", "panoptic segmentation",
+            "目标检测", "语义分割", "实例分割", "场景理解", "视觉推理", "目标识别", "图像分类", "全景分割"
+        ]
+    }
+    
+    # 检查强信号关键词
+    for category, keywords in strong_signals.items():
+        matches = sum(1 for kw in keywords if kw in combined_text)
+        if matches >= 2 and category in scores and scores[category] >= 0.05:
+            subcategory = get_subcategory(title, abstract, category, scores[category])
+            return [(category, scores[category], subcategory)]
+    
+    # 第二步：收集所有潜在的候选类别
+    all_candidates = []
+    
+    # 定义所有类别及其基础阈值 - 按照用户指定的优先级排序
+    all_categories = {
+        # 基础研究类别 - 优先级最高的类别
+        "生成式视觉与内容创建 (Generative Vision & Content Creation)": 0.06,  # 降低阈值，鼓励分类
+        "三维重建与几何感知 (3D Reconstruction & Geometric Perception)": 0.06,  # 降低阈值，鼓励分类
+        "动态视觉与时序建模 (Dynamic Vision & Temporal Modeling)": 0.06,  # 降低阈值，鼓励分类
+        "多模态视觉与跨模态学习 (Multimodal Vision & Cross-modal Learning)": 0.06,  # 降低阈值，鼓励分类
+        "模型优化与系统鲁棒性 (Model Optimization & System Robustness)": 0.06,  # 降低阈值，鼓励分类
+        "效率学习与适应性智能 (Efficient Learning & Adaptive Intelligence)": 0.06,  # 降低阈值，鼓励分类
+        "静态图像理解与语义解析 (Static Image Understanding & Semantic Analysis)": 0.06,  # 降低阈值，鼓励分类
+        
+        # 其他基础研究类别
+        "视觉表征学习与大模型 (Visual Representation Learning & Foundation Models)": 0.25,  # 提高阈值，减少过度分类
+        "感知-动作智能与主动视觉 (Perception-Action Intelligence & Active Vision)": 0.10,
+        "前沿视觉理论与跨学科融合 (Advanced Vision Theory & Interdisciplinary Integration)": 0.10,
+        
+        # 应用类别 - 需要更强的信号
+        "生物医学影像计算 (Biomedical Image Computing)": 3.0,  # 进一步提高阈值
+        "智能交通与自主系统 (Intelligent Transportation & Autonomous Systems)": 3.0,  # 进一步提高阈值
+        "工业视觉与遥感感知 (Industrial Vision & Remote Sensing)": 3.0,  # 进一步提高阈值
+        "交互媒体与虚拟现实技术 (Interactive Media & Extended Reality)": 3.0   # 进一步提高阈值
+    }
+    
+    # 收集所有符合阈值的候选类别
+    for category, threshold in all_categories.items():
+        if category in scores and scores[category] >= threshold:
+            subcategory = get_subcategory(title, abstract, category, scores[category])
+            all_candidates.append((category, scores[category], subcategory))
+    
+    # 如果没有任何候选类别，返回空
+    if not all_candidates:
+        return []
+    
+    # 第二步：对候选类别进行筛选和优化    
+    # 如果只有一个候选类别，直接返回
+    if len(all_candidates) == 1:
+        # print(f"✅ 唯一候选，直接分类: {all_candidates[0][0]}")
+        return all_candidates
+    
+    # 第三步：多候选类别的智能筛选
+    # 3.1 优先选择基础研究类别（除非应用类别得分明显更高）
+    basic_research_candidates = [
+        cat for cat in all_candidates 
+        if not any(app in cat[0] for app in ["生物医学", "智能交通", "工业视觉", "交互媒体"])
     ]
     
-    # 检查是否有应用类别的特征
-    application_category = "领域特定视觉应用 (Domain-specific Visual Applications)"
-    has_application_features = False
-    application_score = 0
-    application_subcategory = None
+    application_candidates = [
+        cat for cat in all_candidates 
+        if any(app in cat[0] for app in ["生物医学", "智能交通", "工业视觉", "交互媒体"])
+    ]
     
-    # 如果应用类别有足够的得分，则认为有应用特征 - 调整阈值为0.35，平衡准确性和覆盖率
-    if application_category in scores and scores[application_category] >= 0.35:
-        has_application_features = True
-        application_score = scores[application_category]
-        # 尝试获取应用类别的子类别
-        application_subcategory = get_subcategory(title, abstract, application_category, application_score)
+    # 3.2 检查标题中是否明确提到应用场景
+    title_lower = title.lower()
+    has_application_in_title = any(term in title_lower for term in [
+        "medical", "healthcare", "clinical", "autonomous", "driving", "vehicle", 
+        "industrial", "inspection", "remote sensing", "satellite", "aerial", "drone",
+        "ar", "vr", "augmented reality", "virtual reality", "mixed reality", "xr",
+        "医学", "医疗", "自主", "驾驶", "车辆", "工业", "检测", "遥感", "卫星", "航空", "无人机",
+        "增强现实", "虚拟现实", "混合现实"
+    ])
+    
+    # 3.3 根据用户指定的优先级类别进行筛选
+    priority_categories = [
+        "生成式视觉与内容创建", "三维重建与几何感知", "动态视觉与时序建模",
+        "多模态视觉与跨模态学习", "模型优化与系统鲁棒性", "效率学习与适应性智能",
+        "静态图像理解与语义解析"
+    ]
+    
+    # 检查是否有优先级类别
+    priority_candidates = [cat for cat in basic_research_candidates if any(pc in cat[0] for pc in priority_categories)]
+    
+    # 3.4 决策逻辑
+    if priority_candidates:
+        # 如果有优先级类别，选择这些类别
+        candidates_to_consider = priority_candidates
+        # print(f"🔝 选择优先级基础研究类别")
+    elif basic_research_candidates and application_candidates:
+        max_basic_score = max(basic_research_candidates, key=lambda x: x[1])[1]
+        max_app_score = max(application_candidates, key=lambda x: x[1])[1]
         
-        # 创建分类解释
-        explanation = {
-            "reason": "该论文具有明显的应用特征",
-            "score": round(application_score, 4),
-            "threshold": 0.35,
-            "key_matches": match_details.get(application_category, [])[:5],
-            "decision_method": "应用类别强制判断"
+        # 如果标题中明确提到应用场景且应用类别得分足够高
+        if has_application_in_title and max_app_score > max_basic_score * 1.5:
+            candidates_to_consider = application_candidates
+            # print(f"🏭 标题中有应用场景且得分较高 ({max_app_score:.3f} vs {max_basic_score:.3f})")
+        # 如果应用类别得分压倒性优势
+        elif max_app_score > max_basic_score * 3.0:
+            candidates_to_consider = application_candidates
+            # print(f"🏭 应用类别得分压倒性优势 ({max_app_score:.3f} vs {max_basic_score:.3f})")
+        else:
+            candidates_to_consider = basic_research_candidates
+            # print(f"🔬 优先基础研究类别 ({max_basic_score:.3f} vs {max_app_score:.3f})")
+    elif basic_research_candidates:
+        candidates_to_consider = basic_research_candidates
+        # print(f"🔬 仅有基础研究候选")
+    else:
+        candidates_to_consider = application_candidates
+        # print(f"🏭 仅有应用类别候选")
+    
+    # 3.3 在选定的候选类别中进行最终选择
+    if len(candidates_to_consider) == 1:
+        # print(f"✅ 筛选后唯一候选: {candidates_to_consider[0][0]}")
+        return candidates_to_consider
+    
+    # 3.4 多个候选类别时，使用更智能的决策逻辑
+    try:
+        # 检查标题和摘要中的关键词，更精确地判断论文的真正类别
+        combined_text = (title + " " + abstract).lower()
+        
+        # 用户指定的优先级类别关键词
+        priority_keywords = {
+            "生成式视觉与内容创建": ["diffusion", "generative", "gan", "vae", "synthesis", "text-to-image", "image generation"],
+            "三维重建与几何感知": ["3d", "point cloud", "depth", "nerf", "geometry", "stereo", "reconstruction"],
+            "动态视觉与时序建模": ["video", "temporal", "motion", "tracking", "optical flow", "action"],
+            "多模态视觉与跨模态学习": ["multimodal", "cross-modal", "vision-language", "text-vision", "audio-visual"],
+            "模型优化与系统鲁棒性": ["adversarial", "robustness", "optimization", "quantization", "pruning", "compression"],
+            "效率学习与适应性智能": ["few-shot", "zero-shot", "meta-learning", "transfer", "domain adaptation", "continual"],
+            "静态图像理解与语义解析": ["detection", "segmentation", "recognition", "classification", "scene understanding"]
         }
         
-        # 如果有应用特征，直接返回应用类别及解释
-        return [(application_category, application_score, application_subcategory, explanation)]
-    
-    # 首先尝试使用高优先级类别（大幅降低阈值）
-    result_with_subcategories = []
-    
-    for category in high_priority_categories:
-        if category in scores and category in CATEGORY_THRESHOLDS:
-            category_score = scores[category]
-            threshold = CATEGORY_THRESHOLDS[category]["threshold"]
-            # 动态阈值调整：根据文本长度和复杂度调整阈值
-            # 计算文本复杂度因子
-            text_length = len(title) + len(abstract)
-            complexity_factor = 1.0
-            
-            # 较短文本需要更高的阈值（因为关键词密度更高）
-            if text_length < 500:
-                complexity_factor = 1.2
-            elif text_length > 2000:
-                complexity_factor = 0.9  # 较长文本需要更宽松的阈值
-            
-            # 计算关键词密度（匹配的关键词数量除以文本长度）
-            keyword_density = len(match_details.get(category, [])) / (text_length / 100) if text_length > 0 else 0
-            density_factor = 1.0
-            
-            if keyword_density > 1.5:  # 关键词密度高
-                density_factor = 0.9  # 降低阈值要求
-            elif keyword_density < 0.5:  # 关键词密度低
-                density_factor = 1.1  # 提高阈值要求
-            
-            # 计算动态阈值系数
-            dynamic_threshold_factor = 0.35 * complexity_factor * density_factor
-            
-            # 应用动态阈值
-            if category_score >= threshold * dynamic_threshold_factor and category_score >= 0.10:
-                # 尝试获取子类别
-                subcategory = get_subcategory(title, abstract, category, category_score)
-                # 优先返回有子类别的结果
-                if subcategory:
-                    return [(category, category_score, subcategory)]
-                # 如果没有子类别，先保存结果，继续寻找其他可能有子类别的类别
-                result_with_subcategories.append((category, category_score, None))
-    
-    # 收集候选类别
-    candidate_categories = []
-    
-    # 将高优先级类别的结果添加到候选类别中
-    if result_with_subcategories:
-        candidate_categories.extend(result_with_subcategories)
-    
-    # 处理所有类别，收集候选类别
-    for category, score in scores.items():
-        # 跳过应用类别，因为它已经在前面处理过了
-        if category == application_category:
-            continue
-            
-        if category in CATEGORY_THRESHOLDS:
-            threshold = CATEGORY_THRESHOLDS[category]["threshold"]
-            # 使用更宽松的阈值收集候选类别
-            if score >= threshold * 0.3:  
-                # 尝试获取子类别
-                subcategory = get_subcategory(title, abstract, category, score)
-                candidate_categories.append((category, score, subcategory))
-        else:
-            # 对于没有定义阈值的类别，使用更宽松的相对阈值
-            if score >= max_score * 0.2:  
-                # 尝试获取子类别
-                subcategory = get_subcategory(title, abstract, category, score)
-                candidate_categories.append((category, score, subcategory))
-    
-    # 如果有候选类别，使用ChatGLM做出最终决策
-    if candidate_categories:
-        # 按得分降序排序候选类别
-        sorted_candidates = sorted(candidate_categories, key=lambda x: x[1], reverse=True)
+        # 检查标题中的关键词匹配
+        for cat in candidates_to_consider:
+            category_name = cat[0].split(" (")[0]  # 去除英文部分
+            if category_name in priority_keywords:
+                keywords = priority_keywords[category_name]
+                matches = sum(1 for kw in keywords if kw in combined_text)
+                if matches >= 3:  # 如果标题和摘要中有多个关键词匹配，直接选择该类别
+                    return [cat]
         
-        # 如果只有一个候选类别，直接返回
-        if len(sorted_candidates) == 1:
-            return [sorted_candidates[0]]
+        # 使用ChatGLM做决策
+        final_category = chatglm.decide_category(title, abstract, candidates_to_consider)
         
-        # 如果有多个候选类别，使用ChatGLM做出决策
-        try:
-            from chatglm_helper import ChatGLMHelper
-            chatglm_helper = ChatGLMHelper()
-            
-            # 使用ChatGLM决策最终类别
-            final_category = chatglm_helper.decide_category(title, abstract, sorted_candidates)
-            
-            # 找到对应的候选类别元组
-            for candidate in sorted_candidates:
-                if candidate[0] == final_category:
-                    return [candidate]
-            
-            # 如果找不到对应的候选类别，返回得分最高的
-            return [sorted_candidates[0]]
-        except Exception as e:
-            print(f"ChatGLM决策分类出错: {str(e)}")
-            # 如果出错，返回得分最高的候选类别
-            return [sorted_candidates[0]]
+        if final_category:
+            # 找到对应的完整信息
+            for cat, score, subcat in candidates_to_consider:
+                if cat == final_category:
+                    # 如果标题中明确提到了这个类别的关键词，增强这个决策
+                    category_name = cat.split(" (")[0]  # 去除英文部分
+                    if category_name in priority_keywords:
+                        keywords = priority_keywords[category_name]
+                        if any(kw in title.lower() for kw in keywords):
+                            return [(cat, score, subcat)]
+                    
+                    # 如果ChatGLM选择了视觉表征学习类别，检查是否有更适合的优先级类别
+                    if "视觉表征学习与大模型" in cat:
+                        # 检查是否有优先级类别的候选
+                        for priority_cat in candidates_to_consider:
+                            priority_name = priority_cat[0].split(" (")[0]
+                            if priority_name in priority_keywords and priority_name != "视觉表征学习与大模型":
+                                # 如果有优先级类别且得分不低于视觉表征学习的70%
+                                if priority_cat[1] >= cat[1] * 0.7:
+                                    return [priority_cat]
+                    
+                    return [(cat, score, subcat)]
+        
+        # print(f"⚠️ ChatGLM决策失败，选择得分最高的候选")
+    except Exception as e:
+        print(f"⚠️ ChatGLM调用失败: {e}，选择得分最高的候选")
     
-    # 如果没有候选类别，使用最简单的回退机制
-    if scores:
-        # 按得分降序排序所有类别
-        all_categories = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        top_category, top_score = all_categories[0]
-        
-        # 如果最高得分超过一个最低阈值
-        if top_score >= 0.15:
-            # 尝试获取子类别
-            subcategory = get_subcategory(title, abstract, top_category, top_score)
-            
-            # 创建分类解释
-            explanation = {
-                "reason": "没有匹配到显著类别，使用得分最高的类别",
-                "score": round(top_score, 4),
-                "threshold": 0.15,
-                "key_matches": match_details.get(top_category, [])[:5],
-                "decision_method": "回退分类机制"
-            }
-            
-            return [(top_category, top_score, subcategory, explanation)]
-    
-    # 如果有候选类别，使用ChatGLM做出最终决策
-    if candidate_categories:
-        # 按得分降序排序候选类别
-        sorted_candidates = sorted(candidate_categories, key=lambda x: x[1], reverse=True)
-        
-        # 如果只有一个候选类别，直接返回
-        if len(sorted_candidates) == 1:
-            return [sorted_candidates[0]]
-        
-        # 如果有多个候选类别，使用ChatGLM做出决策
-        try:
-            from chatglm_helper import ChatGLMHelper
-            chatglm_helper = ChatGLMHelper()
-            
-            # 使用ChatGLM决策最终类别
-            final_category = chatglm_helper.decide_category(title, abstract, sorted_candidates)
-            
-            # 找到对应的候选类别元组
-            for candidate in sorted_candidates:
-                if candidate[0] == final_category:
-                    return [candidate]
-            
-            # 如果找不到对应的候选类别，返回得分最高的
-            return [sorted_candidates[0]]
-        except Exception as e:
-            print(f"ChatGLM决策分类出错: {str(e)}")
-            # 如果出错，返回得分最高的候选类别
-            return [sorted_candidates[0]]
-        
-    # 如果所有尝试都失败，返回空列表
-    return []
+    # 3.5 如果ChatGLM失败，选择得分最高的候选
+    best_candidate = max(candidates_to_consider, key=lambda x: x[1])
+    # print(f"📊 最高得分候选: {best_candidate[0]} ({best_candidate[1]:.3f})")
+    return [best_candidate]
 
 
 def calculate_category_relation(category1, category2, categories_config):
@@ -833,15 +904,8 @@ def calculate_category_relation(category1, category2, categories_config):
     # 使用Jaccard相似度计算相关性
     similarity = len(overlap) / len(keywords1.union(keywords2))
     
-    # 预定义的相关类别对
-    related_pairs = [
-        ("视觉表征与基础模型", "自监督与表征学习"),
-        ("视觉识别与理解", "三维视觉与几何推理"),
-        ("生成式视觉模型", "视觉-语言协同理解"),
-        ("时序视觉分析", "具身智能与交互视觉"),
-        ("计算效率与模型优化", "鲁棒性与可靠性"),
-        ("低资源与高效学习", "计算效率与模型优化")
-    ]
+    # 使用最新的类别定义生成相关类别对
+    related_pairs = get_related_category_pairs()
     
     # 检查是否为预定义的相关类别对
     for pair in related_pairs:
@@ -876,34 +940,104 @@ def process_paper(paper, glm_helper, target_date):
         published = paper.published
         updated = paper.updated
         
-        # 检查日期是否符合要求
-        if not check_date(published, updated, target_date):
+        # 检查发布日期或更新日期是否匹配目标日期
+        published_date = published.date()
+        updated_date = updated.date()
+        if published_date != target_date and updated_date != target_date:
             return None
             
-        # 从配置文件加载类别配置
-        from categories_config import CATEGORIES_CONFIG
+        # 获取PDF链接
+        pdf_url = next(
+            (link.href for link in paper.links if link.title == "pdf"), None)
         
-        # 获取论文类别
-        categories_result = get_category_by_keywords(title, abstract, CATEGORIES_CONFIG)
+        # 初始化默认值，避免异常时未定义
+        github_link = "None"
+        category = "其他 (Others)"  # 修改默认值为带英文的格式
+        subcategory = "未指定"
+        title_cn = f"[翻译失败] {title}"
+        analysis = {}
+
+        # 并行执行耗时任务
+        try:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                # 提交所有任务
+                github_future = executor.submit(extract_github_link, abstract)
+                analysis_future = executor.submit(
+                    glm_helper.analyze_paper_contribution, title, abstract)
+                title_cn_future = executor.submit(
+                    glm_helper.translate_title, title)
+
+                # 等待所有任务完成
+                github_link = github_future.result() or "None"
+                analysis = analysis_future.result() or {}
+                title_cn = title_cn_future.result() or f"[翻译失败] {title}"
+        except Exception as e:
+            logger.error(f"并行处理任务时出错: {str(e)}")
+            # 继续处理，使用默认值
         
-        # 如果没有分类结果，则使用“其他”类别
-        if not categories_result:
-            categories_result = [("\u5176\u4ed6 (Others)", 0.0, None)]
+        # 使用基于关键词的分类方法
+        try:
+            # 使用新的分类函数
+            category_results = get_category_by_keywords(title, abstract, CATEGORY_KEYWORDS)
             
-        # 构建返回结果
-        result = {
-            "title": title,
-            "abstract": abstract,
-            "url": paper_url,
-            "authors": authors_str,
-            "published": published,
-            "updated": updated,
-            "categories": categories_result
+            if category_results:
+                # 获取主类别和得分
+                result_item = category_results[0]
+                
+                # 兼容多种返回格式：(category, score) 或 (category, score, subcategory) 或 (category, score, subcategory, explanation)
+                if len(result_item) >= 4:  # 新格式，包含解释
+                    main_category, main_score, sub_category_tuple, explanation = result_item
+                elif len(result_item) == 3:  # 旧格式，包含子类别
+                    main_category, main_score, sub_category_tuple = result_item
+                    explanation = None
+                else:  # 最简单的格式
+                    main_category, main_score = result_item
+                    sub_category_tuple = None
+                    explanation = None
+                    
+                category = main_category
+                
+                # 处理子类别
+                if sub_category_tuple:
+                    subcategory_name, subcategory_score = sub_category_tuple
+                    subcategory = subcategory_name
+                else:
+                    subcategory = "未指定"
+                    
+                # 不输出分类结果信息，减少日志干扰
+            else:
+                # 如果没有匹配的类别，使用默认类别
+                category = "其他 (Others)"
+                subcategory = "未指定"
+        except Exception as e:
+            logger.error(f"分类论文时出错: {str(e)}")
+            traceback.print_exc()
+            category = "其他 (Others)"
+            subcategory = "未指定"
+
+        paper_info = {
+            'title': title,
+            'title_zh': title_cn,  # 修改键名为 title_zh 以匹配其他函数
+            'abstract': abstract,
+            'authors': authors_str,
+            'pdf_url': pdf_url,
+            'github_url': github_link,  # 修改键名为 github_url 以匹配其他函数
+            'url': paper_url,  # 添加 arxiv URL
+            'category': category,
+            'subcategory': subcategory,  # 添加子类别信息
+            'published': published,
+            'updated': updated,
+            'is_updated': updated_date == target_date and published_date != target_date
         }
-        
-        return result
+
+        # 合并分析结果
+        if analysis:
+            paper_info.update(analysis)
+
+        return paper_info
+
     except Exception as e:
-        print(f"\u5904\u7406\u8bba\u6587\u65f6\u51fa\u9519: {str(e)}")
+        logger.error(f"\u5904\u7406\u8bba\u6587\u65f6\u51fa\u9519: {str(e)}")
         return None
 
 
@@ -1062,15 +1196,8 @@ def calculate_category_relation(category1, category2, categories_config):
     # 使用Jaccard相似度计算相关性
     similarity = len(overlap) / len(keywords1.union(keywords2))
     
-    # 预定义的相关类别对
-    related_pairs = [
-        ("视觉表征与基础模型", "自监督与表征学习"),
-        ("视觉识别与理解", "三维视觉与几何推理"),
-        ("生成式视觉模型", "视觉-语言协同理解"),
-        ("时序视觉分析", "具身智能与交互视觉"),
-        ("计算效率与模型优化", "鲁棒性与可靠性"),
-        ("低资源与高效学习", "计算效率与模型优化")
-    ]
+    # 使用最新的类别定义生成相关类别对
+    related_pairs = get_related_category_pairs()
     
     # 检查是否为预定义的相关类别对
     for pair in related_pairs:
@@ -1104,13 +1231,13 @@ def process_paper(paper, glm_helper, target_date):
         authors_str = ', '.join(authors[:8]) + (' .etc.' if len(authors) > 8 else '')  # 限制作者显示数量，超过8个显示etc.
         published = paper.published
         updated = paper.updated
-
+        
         # 检查发布日期或更新日期是否匹配目标日期
         published_date = published.date()
         updated_date = updated.date()
         if published_date != target_date and updated_date != target_date:
             return None
-
+            
         # 获取PDF链接
         pdf_url = next(
             (link.href for link in paper.links if link.title == "pdf"), None)
@@ -1137,13 +1264,12 @@ def process_paper(paper, glm_helper, target_date):
                 analysis = analysis_future.result() or {}
                 title_cn = title_cn_future.result() or f"[翻译失败] {title}"
         except Exception as e:
-            print(f"并行处理任务时出错: {str(e)}")
+            logger.error(f"并行处理任务时出错: {str(e)}")
             # 继续处理，使用默认值
         
         # 使用基于关键词的分类方法
         try:
             # 使用新的分类函数
-            from categories_config import CATEGORY_KEYWORDS
             category_results = get_category_by_keywords(title, abstract, CATEGORY_KEYWORDS)
             
             if category_results:
@@ -1176,7 +1302,7 @@ def process_paper(paper, glm_helper, target_date):
                 category = "其他 (Others)"
                 subcategory = "未指定"
         except Exception as e:
-            print(f"分类论文时出错: {str(e)}")
+            logger.error(f"分类论文时出错: {str(e)}")
             traceback.print_exc()
             category = "其他 (Others)"
             subcategory = "未指定"
@@ -1203,41 +1329,43 @@ def process_paper(paper, glm_helper, target_date):
         return paper_info
 
     except Exception as e:
-        print(f"处理论文时出错: {str(e)}")
+        logger.error(f"\u5904\u7406\u8bba\u6587\u65f6\u51fa\u9519: {str(e)}")
         return None
 
 
 def get_cv_papers():
-    """获取CV领域论文并保存为Markdown"""
-    print("\n" + "="*50)
-    print(f"开始获取CV论文 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*50)
+    """
+    获取并分类 CV 论文的主函数
+    """
+    logger.info("="*50)
+    logger.info(f"开始获取CV论文 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("="*50)
     
     try:
-        # 获取目标日期（前一天）
+        # 计算目标日期
         target_date = (datetime.now() - timedelta(days=QUERY_DAYS_AGO)).date()
-        print(f"\n📅 目标日期: {target_date}")
-        print(f"📊 最大论文数: {MAX_RESULTS}")
-        print(f"🧵 最大线程数: {MAX_WORKERS}\n")
+        logger.info(f"\n📅 目标日期: {target_date}")
+        logger.info(f"📊 论文数量: {MAX_RESULTS}")
+        logger.info(f"🧵 线程数量: {MAX_WORKERS}\n")
 
         # 初始化ChatGLM助手
-        print("🤖 初始化ChatGLM助手...")
+        logger.info("🤖 初始化ChatGLM助手...")
         glm_helper = ChatGLMHelper()
 
         # 初始化arxiv客户端
-        print("🔄 初始化arXiv客户端...")
+        logger.info("🔄 初始化arXiv客户端...")
         client = arxiv.Client(
-            page_size=100,  # 每页获取100篇论文
-            delay_seconds=3,  # 请求间隔3秒
-            num_retries=5    # 失败重试5次
+            page_size=100,
+            delay_seconds=3,
+            num_retries=5
         )
 
         # 构建查询
         search = arxiv.Search(
-            query='cat:cs.CV',  # 计算机视觉类别
+            query='cat:cs.CV',
             max_results=MAX_RESULTS,
             sort_by=arxiv.SortCriterion.LastUpdatedDate,
-            sort_order=arxiv.SortOrder.Descending  # 确保按时间降序排序
+            sort_order=arxiv.SortOrder.Descending
         )
 
         # 创建线程池
@@ -1249,9 +1377,9 @@ def get_cv_papers():
 
         # 使用线程池并行处理论文
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            # 创建进度条
-            print("\n🔍 开始获取论文...")
-            results = client.results(search)
+            # 创建进度条并开始获取论文
+            logger.info("\n🔍 开始获取论文...")
+            results = client.results(search)  # 从 arXiv API 获取论文结果
             
             # 创建总进度条
             total_pbar = tqdm(
@@ -1333,12 +1461,12 @@ def get_cv_papers():
             total_pbar.close()
 
         if total_papers == 0:
-            print(f"没有找到{target_date}发布的论文。")
+            logger.warning(f"没有找到{target_date}发布的论文。")
             return
 
-        # 打印统计信息
-        print(f"\n📊 论文统计信息：")
-        print(f"{'='*50}")
+        # 输出论文统计信息
+        logger.info(f"\n📊 论文统计信息：")
+        logger.info(f"{'='*50}")
         
         # 按论文数量降序排序类别
         sorted_categories = sorted(
@@ -1356,8 +1484,8 @@ def get_cv_papers():
             if len(papers) == 0 and category != "其他 (Others)":
                 continue
                 
-            # 打印一级分类标题
-            print(f"\n【{category}】")
+            # 输出一级分类标题
+            logger.info(f"\n【{category}】")
             
             # 如果不是"其他"类别，将没有子类别的论文移动到"其他"类别
             if category != "其他 (Others)":
@@ -1399,32 +1527,34 @@ def get_cv_papers():
             # 打印一级分类总数
             num_new = sum(1 for p in papers if not p['is_updated'])
             num_updated = sum(1 for p in papers if p['is_updated'])
-            print(f"总计: {len(papers):3d} 篇 (🆕 {num_new:3d} 新发布, 📝 {num_updated:3d} 更新)")
+            logger.info(f"总计: {len(papers):3d} 篇 (🔥 {num_new:3d} 新发布, 📝 {num_updated:3d} 更新)")
             
             # 打印子类别统计
             for subcategory, subpapers in sorted_subcategories:
                 num_new = sum(1 for p in subpapers if not p['is_updated'])
                 num_updated = sum(1 for p in subpapers if p['is_updated'])
-                print(
-                    f"└─ {subcategory:15s}: {len(subpapers):3d} 篇 (🆕 {num_new:3d} 新发布, 📝 {num_updated:3d} 更新)")
+                logger.info(
+                    f"└─ {subcategory:15s}: {len(subpapers):3d} 篇 (🔥 {num_new:3d} 新发布, 📝 {num_updated:3d} 更新)")
             
             # 不再打印"直接归类"，因为这些论文已经被移动到"其他 (Others)"类别中
         
-        print(f"\n{'='*50}")
-        print(f"总计: {total_papers} 篇")
+        logger.info(f"\n{'='*50}")
+        logger.info(f"总计: {total_papers} 篇")
         
         # 保存结果到Markdown文件
-        print("\n💾 正在保存结果到Markdown文件...")
+        logger.info("\n💾 正在保存结果到Markdown文件...")
         save_papers_to_markdown(papers_by_category, target_date)
         
-        print("\n" + "="*50)
-        print(f"CV论文获取完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print("="*50 + "\n")
+        logger.info("\n" + "="*50)
+        logger.info(f"CV论文获取完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("="*50 + "\n")
 
     except Exception as e:
-        print("\n❌ 处理CV论文时出错:")
-        print(f"错误信息: {str(e)}")
-        print(f"发生时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.error("\n❌ 处理CV论文时出错:")
+        logger.error(f"错误信息: {str(e)}")
+        logger.error(f"发生时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        # 记录堆栈跟踪信息以便调试
+        logger.debug(traceback.format_exc())
         raise  # 抛出异常以便查看详细错误信息
 
 
@@ -1469,8 +1599,8 @@ def save_papers_to_markdown(papers_by_category: dict, target_date):
         # f.write("\n## 论文详情\n\n")
         f.write(df_to_markdown_detailed(papers_by_category, target_date))
 
-    print(f"\n表格格式文件已保存到: {table_filepath}")
-    print(f"详细格式文件已保存到: {detailed_filepath}")
+    logger.info(f"\n表格格式文件已保存到: {table_filepath}")
+    logger.info(f"详细格式文件已保存到: {detailed_filepath}")
 
 
 def generate_statistics_markdown(papers_by_category: dict) -> str:
@@ -1516,8 +1646,7 @@ def generate_statistics_markdown(papers_by_category: dict) -> str:
         markdown += "| 子类别 | 论文数 | 新发布 | 更新 |\n"
         markdown += "|--------|--------|--------|------|\n"
         
-        # 如果是"其他 (Others)"类别，直接处理所有论文
-        # 对于其他类别，将没有子类别的论文移动到"其他 (Others)"类别中
+        # 如果是"其他"类别，没有子类别的论文直接显示在主类别下
         papers_with_subcategory = []
         
         if category != "其他 (Others)":
@@ -1528,7 +1657,7 @@ def generate_statistics_markdown(papers_by_category: dict) -> str:
                     papers_with_subcategory.append(paper)
                 # 没有子类别的论文已经被移动到"其他 (Others)"类别中
         else:
-            # 对于"其他 (Others)"类别，所有论文都直接处理
+            # 对于"其他"类别，所有论文都直接处理
             papers_with_subcategory = papers
         
         # 按子类别分组有子类别的论文
@@ -1555,6 +1684,7 @@ def generate_statistics_markdown(papers_by_category: dict) -> str:
     return markdown
 
 
-if __name__ == "__main__":
-    # 直接运行查询
+if __name__ == "__main__":    
+    # 运行论文获取与分类程序
+    logger.info(f"CV论文获取程序启动 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     get_cv_papers()
