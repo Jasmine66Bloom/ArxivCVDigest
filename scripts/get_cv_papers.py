@@ -854,59 +854,6 @@ def calculate_category_relation(category1, category2, categories_config):
     return min(similarity, 1.0)  # 确保不超过1
 
 
-def process_paper(paper, glm_helper, target_date):
-    """处理单篇论文的所有分析任务
-
-    Args:
-        paper: ArXiv论文对象
-        glm_helper: ChatGLM助手实例
-        target_date: 目标日期
-
-    Returns:
-        Dict: 包含论文信息的字典，如果论文不符合日期要求则返回None
-    """
-    try:
-        # 获取论文信息
-        title = paper.title
-        abstract = paper.summary
-        paper_url = paper.entry_id
-        author_list = paper.authors
-        authors = [author.name for author in author_list]
-        authors_str = ', '.join(authors[:8]) + (' .etc.' if len(authors) > 8 else '')  # 限制作者显示数量，超过8个显示etc.
-        published = paper.published
-        updated = paper.updated
-        
-        # 检查日期是否符合要求
-        if not check_date(published, updated, target_date):
-            return None
-            
-        # 从配置文件加载类别配置
-        from categories_config import CATEGORIES_CONFIG
-        
-        # 获取论文类别
-        categories_result = get_category_by_keywords(title, abstract, CATEGORIES_CONFIG)
-        
-        # 如果没有分类结果，则使用“其他”类别
-        if not categories_result:
-            categories_result = [("\u5176\u4ed6 (Others)", 0.0, None)]
-            
-        # 构建返回结果
-        result = {
-            "title": title,
-            "abstract": abstract,
-            "url": paper_url,
-            "authors": authors_str,
-            "published": published,
-            "updated": updated,
-            "categories": categories_result
-        }
-        
-        return result
-    except Exception as e:
-        print(f"\u5904\u7406\u8bba\u6587\u65f6\u51fa\u9519: {str(e)}")
-        return None
-
-
 def get_subcategory(title: str, abstract: str, main_category: str, main_score: float) -> Optional[Tuple[str, float]]:
     """
     在确定主类别后，进一步确定子类别
