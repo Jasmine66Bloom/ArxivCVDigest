@@ -16,7 +16,7 @@ import arxiv
 
 # 查询参数设置
 QUERY_DAYS_AGO = 3          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 500           # 最大返回论文数量
+MAX_RESULTS = 700           # 最大返回论文数量
 MAX_WORKERS = 8            # 并行处理的最大线程数
 
 
