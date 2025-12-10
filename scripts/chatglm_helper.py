@@ -1,5 +1,4 @@
-"""ChatGLM助手：用于论文标题翻译和分类"""
-from zhipuai import ZhipuAI
+"""LLM助手：用于论文标题翻译和分类（支持豆包和ChatGLM双模型）"""
 from typing import Tuple, List, Dict
 import time
 import re
@@ -7,14 +6,35 @@ from collections import defaultdict
 import categories_config
 import json
 import math
-from config import CHATGLM_API_KEY  # 导入配置文件
+
+# 导入配置
+from config import LLM_PROVIDER
 
 class ChatGLMHelper:
+    """LLM助手类（支持豆包和ChatGLM双模型）"""
+    
     def __init__(self):
-        """初始化ChatGLM客户端"""
-        if not CHATGLM_API_KEY:
-            raise ValueError("请在config.py中设置CHATGLM_API_KEY")
-        self.client = ZhipuAI(api_key=CHATGLM_API_KEY)
+        """根据配置初始化对应的LLM客户端"""
+        self.provider = LLM_PROVIDER.lower()
+        
+        if self.provider == "doubao":
+            from doubao_client import DoubaoClient
+            from config import DOUBAO_API_KEY, DOUBAO_MODEL
+            if not DOUBAO_API_KEY:
+                raise ValueError("请在config.py中设置DOUBAO_API_KEY")
+            self.client = DoubaoClient(api_key=DOUBAO_API_KEY, model=DOUBAO_MODEL)
+            self.model = DOUBAO_MODEL
+            print(f"🤖 使用豆包大模型: {self.model}")
+        elif self.provider == "chatglm":
+            from zhipuai import ZhipuAI
+            from config import CHATGLM_API_KEY, CHATGLM_MODEL
+            if not CHATGLM_API_KEY:
+                raise ValueError("请在config.py中设置CHATGLM_API_KEY")
+            self.client = ZhipuAI(api_key=CHATGLM_API_KEY)
+            self.model = CHATGLM_MODEL
+            print(f"🤖 使用ChatGLM模型: {self.model}")
+        else:
+            raise ValueError(f"不支持的LLM提供商: {LLM_PROVIDER}，请在config.py中设置LLM_PROVIDER为'doubao'或'chatglm'")
 
     def translate_title(self, title: str, abstract: str = "") -> str:
         """
@@ -25,7 +45,7 @@ class ChatGLMHelper:
         Returns:
             str: 中文标题
         """
-        max_retries = 3
+        max_retries = 10
         retry_delay = 2  # 重试延迟秒数
         
         # 提取摘要中的关键句子作为上下文
@@ -35,38 +55,30 @@ class ChatGLMHelper:
             context = f"""论文摘要开头：
 {abstract[:150]}..."""
 
-        # 改进的提示词，更结构化和清晰，强调不要翻译专业术语
-        prompt = f"""任务：将计算机视觉领域的学术论文标题从英文翻译成中文。
+        # 简洁的提示词，直接要求返回中文标题
+        prompt = f"""将以下计算机视觉论文标题翻译成中文。
 
-论文标题：
-{title}
+要求：
+- 专业术语、模型名称、算法名称、缩写保持英文原样（如CLIP、ViT、NeRF、3D等）
+- 只输出翻译结果，不要解释
 
-{context}
-
-翻译要求：
-1. 不要翻译专业用语、算法名称、模型名称、缩写和专有名词，必须原样保留
-2. 以下类型的术语必须原样保留：
-   - 模型名称：如 CLIP, ViT, BERT, GPT, ResNet, Transformer 等
-   - 算法名称：如 RANSAC, SLAM, NeRF, GAN, VAE 等
-   - 缩写：如 CNN, RNN, LSTM, 3D, RGB, IoU, mAP, FPS 等
-   - 数据集名称：如 COCO, ImageNet, CIFAR 等
-3. 翻译风格要简洁专业、符合中文学术表达习惯
-4. 只返回中文标题，不要包含其他解释或说明
-
-输出格式：直接返回中文标题，不要添加任何前缀或其他文字"""
+标题：{title}"""
 
         for attempt in range(max_retries):
             try:
                 response = self.client.chat.completions.create(
-                    model="glm-4-air",
+                    model=self.model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.1,
-                    max_tokens=100,
+                    max_tokens=150,
                     top_p=0.7,
                 )
                 translation = response.choices[0].message.content.strip()
+                # 清理可能的多余内容，只保留第一行
+                if '\n' in translation:
+                    translation = translation.split('\n')[0].strip()
                 # 确保返回的是中文
-                if any('\u4e00' <= char <= '\u9fff' for char in translation):
+                if translation and any('\u4e00' <= char <= '\u9fff' for char in translation):
                     return translation
                 else:
                     print(f"警告：第{attempt + 1}次翻译未返回中文结果，重试中...")
@@ -260,7 +272,7 @@ class ChatGLMHelper:
 
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-air",  # 使用功能更强的模型
+                model=self.model,  # 使用功能更强的模型
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=1000,
@@ -430,7 +442,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行分类
             response = self.client.chat.completions.create(
-                model="glm-4-air",  # 修改为 flashx 版本
+                model=self.model,  # 修改为 flashx 版本
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.05,
                 max_tokens=50,
@@ -467,7 +479,7 @@ class ChatGLMHelper:
                     
                     # 使用更强大的模型进行确认
                     response = self.client.chat.completions.create(
-                        model="glm-4-air",  # 使用更强大的模型
+                        model=self.model,  # 使用更强大的模型
                         messages=[{"role": "user", "content": confirm_prompt}],
                         temperature=0.05,
                         max_tokens=50,
@@ -529,24 +541,13 @@ class ChatGLMHelper:
         Returns:
             dict: 包含分析结果的字典，只有一个键"核心贡献"，值为单句话总结
         """
-        prompt = f"""请用一句话总结以下计算机视觉论文的核心贡献。
-    
-论文标题：{title}
-论文摘要：{abstract}
+        prompt = f"""用一句话（不超过50字）总结这篇论文的核心贡献，只输出总结内容。
 
-格式要求：
-- 必须是一句完整的话，不超过50个字
-- 包含论文解决的问题和提出的方法
-- 语言简洁明了，不要使用过于技术性的术语
-- 不要使用编号或序号
-- 不要使用引号或其他标点符号包裹内容
-
-示例输出：
-提出了一种基于注意力机制的轻量级图像分割方法，显著提高了边界清晰度和处理速度。
-"""
+标题：{title}
+摘要：{abstract[:500] if len(abstract) > 500 else abstract}"""
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-air",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=200,
@@ -574,35 +575,30 @@ class ChatGLMHelper:
                 "核心贡献": "分析失败"
             }
 
-    def translate_title(self, title: str) -> str:
-        """将论文标题翻译为中文
-    
+    def _extract_json_field(self, text: str, field: str) -> str:
+        """从文本中提取 JSON 字段值
+        
         Args:
-            title: 英文标题
-    
+            text: 可能包含 JSON 的文本
+            field: 要提取的字段名
+            
         Returns:
-            str: 中文标题
+            str: 字段值，如果提取失败返回空字符串
         """
-        prompt = f"""请将以下计算机视觉论文的标题翻译成中文，保持专业性和准确性：
-
-{title}
-
-只返回翻译结果，不需要解释。"""
-
         try:
-            response = self.client.chat.completions.create(
-                model="glm-4-air",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,
-                max_tokens=200,
-                top_p=0.7,
-            )
-            
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            print(f"翻译标题时出错: {str(e)}")
-            return title  # 如果翻译失败，返回原标题
+            # 先清理 JSON 字符串
+            json_str = self.clean_json_string(text)
+            data = json.loads(json_str)
+            return data.get(field, "")
+        except (json.JSONDecodeError, Exception):
+            # 如果 JSON 解析失败，尝试直接从文本中提取
+            # 查找 "field": "value" 模式
+            import re
+            pattern = rf'"{field}"\s*:\s*"([^"]*)"'
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1)
+            return ""
 
     def confirm_category(self, title: str, abstract: str, initial_category: str) -> Tuple[str, float]:
         """对分类结果进行二次确认"""
@@ -624,7 +620,7 @@ class ChatGLMHelper:
 
         try:
             response = self.client.chat.completions.create(
-                model="glm-4-air",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.1,
                 max_tokens=100,
@@ -724,7 +720,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行分类决策
             response = self.client.chat.completions.create(
-                model="glm-4-air",
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,  # 使用极低的温度提高稳定性
                 max_tokens=50,
@@ -808,7 +804,7 @@ class ChatGLMHelper:
             
             # 调用 ChatGLM 进行子类别分类
             response = self.client.chat.completions.create(
-                model="glm-4-air",  # 修改为 flashx 版本
+                model=self.model,  # 修改为 flashx 版本
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.05,
                 max_tokens=50,
@@ -880,7 +876,7 @@ class ChatGLMHelper:
             
             try:
                 response = self.client.chat.completions.create(
-                    model="glm-4-air",  # 修改为 flashx 版本
+                    model=self.model,  # 修改为 flashx 版本
                     messages=[{"role": "user", "content": simple_prompt}],
                     temperature=0.1,
                     max_tokens=50,
