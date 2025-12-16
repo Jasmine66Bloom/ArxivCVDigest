@@ -82,6 +82,7 @@ class ChatGLMHelper:
                     return translation
                 else:
                     print(f"警告：第{attempt + 1}次翻译未返回中文结果，重试中...")
+                    time.sleep(retry_delay)
             except Exception as e:
                 print(f"翻译出错 (尝试 {attempt + 1}/{max_retries}): {str(e)}")
                 if attempt < max_retries - 1:
