@@ -19,7 +19,6 @@ QUERY_DAYS_AGO = 1          # 查询几天前的论文，0=今天，1=昨天，2
 MAX_RESULTS = 300           # 最大返回论文数量
 MAX_WORKERS = 8            # 并行处理的最大线程数
 
-
 # 导入NLTK库用于文本预处理
 try:
     import nltk
