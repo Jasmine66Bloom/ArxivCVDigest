@@ -1,6 +1,5 @@
 arxiv==1.4.8
 python-dateutil==2.8.2
-zhipuai==1.0.7
 requests==2.31.0
 beautifulsoup4==4.12.2
 concurrent-log-handler==0.9.24

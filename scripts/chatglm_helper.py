@@ -26,11 +26,12 @@ class ChatGLMHelper:
             self.model = DOUBAO_MODEL
             print(f"🤖 使用豆包大模型: {self.model}")
         elif self.provider == "chatglm":
-            from zhipuai import ZhipuAI
-            from config import CHATGLM_API_KEY, CHATGLM_MODEL
+            from chatglm_client import ChatGLMClient
+            from config import CHATGLM_API_KEY, CHATGLM_MODEL, CHATGLM_BASE_URL, CHATGLM_ENABLE_THINKING
             if not CHATGLM_API_KEY:
                 raise ValueError("请在config.py中设置CHATGLM_API_KEY")
-            self.client = ZhipuAI(api_key=CHATGLM_API_KEY)
+            self.client = ChatGLMClient(api_key=CHATGLM_API_KEY, model=CHATGLM_MODEL, base_url=CHATGLM_BASE_URL)
+            self.enable_thinking = CHATGLM_ENABLE_THINKING
             self.model = CHATGLM_MODEL
             print(f"🤖 使用ChatGLM模型: {self.model}")
         else:
@@ -66,13 +67,23 @@ class ChatGLMHelper:
 
         for attempt in range(max_retries):
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1,
-                    max_tokens=150,
-                    top_p=0.7,
-                )
+                # 构建 API 请求参数
+                request_params = {
+                    "model": self.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "max_tokens": 150,
+                    "top_p": 0.7,
+                }
+                
+                # 对于 glm-4.7 模型，根据配置设置 thinking 参数
+                if self.provider == "chatglm" and "glm-4.7" in self.model:
+                    if self.enable_thinking:
+                        request_params["thinking"] = {"type": "enabled"}
+                    else:
+                        request_params["thinking"] = {"type": "disabled"}
+                
+                response = self.client.chat.completions.create(**request_params)
                 translation = response.choices[0].message.content.strip()
                 # 清理可能的多余内容，只保留第一行
                 if '\n' in translation:
