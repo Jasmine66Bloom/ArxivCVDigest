@@ -15,9 +15,9 @@ import traceback
 import arxiv
 
 # 查询参数设置
-QUERY_DAYS_AGO = 3          # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 300           # 最大返回论文数量
-MAX_WORKERS = 4            # 并行处理的最大线程数
+QUERY_DAYS_AGO =  9         # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 2000           # 最大返回论文数量
+MAX_WORKERS = 2            # 并行处理的最大线程数
 
 # 导入NLTK库用于文本预处理
 try:
