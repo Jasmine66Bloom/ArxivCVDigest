@@ -15,8 +15,8 @@ import traceback
 import arxiv
 
 # 查询参数设置
-QUERY_DAYS_AGO =  3         # 查询几天前的论文，0=今天，1=昨天，2=前天
-MAX_RESULTS = 300           # 最大返回论文数量
+QUERY_DAYS_AGO =  4         # 查询几天前的论文，0=今天，1=昨天，2=前天
+MAX_RESULTS = 600           # 最大返回论文数量
 MAX_WORKERS = 2            # 并行处理的最大线程数
 
 # 导入NLTK库用于文本预处理
@@ -1174,7 +1174,7 @@ def get_cv_papers():
         print("🔄 初始化arXiv客户端...")
         client = arxiv.Client(
             page_size=100,  # 每页获取100篇论文
-            delay_seconds=3,  # 请求间隔3秒
+            delay_seconds=0.5,  # 请求间隔3秒
             num_retries=5    # 失败重试5次
         )
 
